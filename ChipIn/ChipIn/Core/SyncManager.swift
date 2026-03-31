@@ -13,7 +13,7 @@ class SyncManager {
 
         let tables = ["expenses", "expense_splits", "settlements", "comments"]
         for table in tables {
-            ch.onPostgresChange(AnyAction.self, schema: "public", table: table) { _ in
+            _ = ch.onPostgresChange(AnyAction.self, schema: "public", table: table) { _ in
                 Task { await onUpdate() }
             }
         }

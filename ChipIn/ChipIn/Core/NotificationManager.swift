@@ -25,7 +25,7 @@ class NotificationManager {
         let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
         // Store token in users table for server-side push notifications
         if let userId = try? await supabase.auth.session.user.id {
-            try? await supabase
+            _ = try? await supabase
                 .from("users")
                 .update(["apns_token": tokenString])
                 .eq("id", value: userId.uuidString)

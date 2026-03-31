@@ -54,18 +54,18 @@ struct AuthView: View {
                         Button {
                             Task { await handleEmailAuth() }
                         } label: {
-                            Group {
+                            ZStack {
                                 if isSigningIn {
                                     ProgressView().tint(.black)
                                 } else {
                                     Text(isSignUp ? "Create Account" : "Sign In")
                                         .fontWeight(.semibold)
+                                        .foregroundStyle(.black)
                                 }
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
                             .background(ChipInTheme.accent)
-                            .foregroundStyle(.black)
                             .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
                         }
                         .disabled(isSigningIn || email.isEmpty || password.isEmpty)
@@ -177,7 +177,7 @@ private struct StyledTextField: View {
     var isSecure: Bool = false
 
     var body: some View {
-        Group {
+        ZStack {
             if isSecure {
                 SecureField(placeholder, text: $text)
             } else {
