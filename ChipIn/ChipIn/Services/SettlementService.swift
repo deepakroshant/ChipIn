@@ -1,15 +1,24 @@
 import Foundation
 import UIKit
+import Supabase
 
 struct SettlementService {
     func settle(fromUserId: UUID, toUserId: UUID, amount: Decimal, groupId: UUID?, method: String) async throws {
-        try await supabase.from("settlements").insert([
-            "from_user_id": fromUserId.uuidString,
-            "to_user_id": toUserId.uuidString,
-            "amount": "\(amount)",
-            "group_id": groupId?.uuidString as Any,
-            "method": method
-        ]).execute()
+        struct SettlementInsert: Encodable {
+            let from_user_id: String
+            let to_user_id: String
+            let amount: String
+            let group_id: String?
+            let method: String
+        }
+        let payload = SettlementInsert(
+            from_user_id: fromUserId.uuidString,
+            to_user_id: toUserId.uuidString,
+            amount: "\(amount)",
+            group_id: groupId?.uuidString,
+            method: method
+        )
+        try await supabase.from("settlements").insert(payload).execute()
 
         try await supabase
             .from("expense_splits")

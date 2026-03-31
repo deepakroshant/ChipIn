@@ -1,5 +1,6 @@
 import UserNotifications
 import UIKit
+import Supabase
 
 @MainActor
 class NotificationManager {
