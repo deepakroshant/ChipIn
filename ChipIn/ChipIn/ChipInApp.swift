@@ -14,10 +14,12 @@ struct ChipInApp: App {
         WindowGroup {
             SwiftUI.Group {
                 if auth.isLoading {
-                    ProgressView()
-                        .tint(ChipInTheme.accent)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(ChipInTheme.background)
+                    ZStack {
+                        ChipInTheme.background.ignoresSafeArea()
+                        ProgressView()
+                            .tint(ChipInTheme.accent)
+                            .scaleEffect(1.5)
+                    }
                 } else if auth.isAuthenticated {
                     ContentView()
                 } else {

@@ -121,6 +121,23 @@ class AuthManager {
         await loadUser(id: session.user.id)
     }
 
+    func signUpWithEmail(email: String, password: String, name: String) async throws {
+        lastError = nil
+        let session = try await supabase.auth.signUp(email: email, password: password)
+        struct UserRow: Encodable { let id: String; let name: String; let email: String }
+        try await supabase
+            .from("users")
+            .upsert(UserRow(id: session.user.id.uuidString, name: name.isEmpty ? "User" : name, email: email))
+            .execute()
+        await loadUser(id: session.user.id)
+    }
+
+    func signInWithEmail(email: String, password: String) async throws {
+        lastError = nil
+        let session = try await supabase.auth.signIn(email: email, password: password)
+        await loadUser(id: session.user.id)
+    }
+
     /// Free local testing: no Apple Developer account. Enable **Anonymous** in Supabase → Authentication → Providers.
     func signInAnonymouslyForDevelopment() async throws {
         lastError = nil

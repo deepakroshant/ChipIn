@@ -5,73 +5,135 @@ struct AuthView: View {
     @Environment(AuthManager.self) var auth
     @State private var isSigningIn = false
     @State private var localError: String?
+    @State private var isSignUp = false
+    @State private var email = ""
+    @State private var password = ""
+    @State private var name = ""
 
     var body: some View {
         ZStack {
-            Color(hex: "#0A0A0A").ignoresSafeArea()
+            ChipInTheme.background.ignoresSafeArea()
 
-            VStack(spacing: 40) {
-                Spacer()
+            ScrollView {
+                VStack(spacing: 32) {
+                    Spacer().frame(height: 60)
 
-                VStack(spacing: 8) {
-                    Text("Chip In")
-                        .font(.system(size: 48, weight: .bold))
-                        .foregroundStyle(.white)
-                    Text("Split expenses with friends")
-                        .font(.subheadline)
-                        .foregroundStyle(Color(hex: "#F97316"))
-                }
-
-                Spacer()
-
-                if isSigningIn {
-                    ProgressView()
-                        .tint(Color(hex: "#F97316"))
-                        .padding(.bottom, 8)
-                }
-
-                if let msg = localError ?? auth.lastError {
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundStyle(.red.opacity(0.9))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                }
-
-                SignInWithAppleButton(.signIn) { request in
-                    request.requestedScopes = [.fullName, .email]
-                } onCompletion: { result in
-                    Task { await handleAppleResult(result) }
-                }
-                .signInWithAppleButtonStyle(.white)
-                .frame(height: 54)
-                .padding(.horizontal, 32)
-                .disabled(isSigningIn)
-
-                #if DEBUG
-                Button {
-                    Task { await handleGuestSignIn() }
-                } label: {
-                    Text("Try as guest (no Apple — dev only)")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color(hex: "#F97316"))
-                }
-                .disabled(isSigningIn)
-                .padding(.top, 8)
-                #endif
-
-                if let msg = localError ?? auth.lastError {
-                    Button("Dismiss") {
-                        localError = nil
-                        auth.lastError = nil
+                    // Logo / title
+                    VStack(spacing: 8) {
+                        Text("Chip In")
+                            .font(.system(size: 52, weight: .bold, design: .rounded))
+                            .foregroundStyle(ChipInTheme.accent)
+                        Text("Split expenses with friends")
+                            .font(.subheadline)
+                            .foregroundStyle(ChipInTheme.secondaryLabel)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
 
-                Spacer()
-                    .frame(height: 48)
+                    Spacer().frame(height: 8)
+
+                    // Email / password form
+                    VStack(spacing: 14) {
+                        if isSignUp {
+                            StyledTextField(placeholder: "Your name", text: $name)
+                        }
+
+                        StyledTextField(placeholder: "Email", text: $email)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+
+                        StyledTextField(placeholder: "Password", text: $password, isSecure: true)
+
+                        if let msg = localError ?? auth.lastError {
+                            Text(msg)
+                                .font(.caption)
+                                .foregroundStyle(ChipInTheme.danger)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 8)
+                        }
+
+                        Button {
+                            Task { await handleEmailAuth() }
+                        } label: {
+                            Group {
+                                if isSigningIn {
+                                    ProgressView().tint(.black)
+                                } else {
+                                    Text(isSignUp ? "Create Account" : "Sign In")
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(ChipInTheme.accent)
+                            .foregroundStyle(.black)
+                            .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+                        }
+                        .disabled(isSigningIn || email.isEmpty || password.isEmpty)
+
+                        Button {
+                            withAnimation(ChipInTheme.easeDefault) {
+                                isSignUp.toggle()
+                                localError = nil
+                                auth.lastError = nil
+                            }
+                        } label: {
+                            Text(isSignUp ? "Already have an account? Sign in" : "New here? Create account")
+                                .font(.subheadline)
+                                .foregroundStyle(ChipInTheme.accent)
+                        }
+                    }
+                    .padding(.horizontal, 28)
+
+                    // Divider
+                    HStack {
+                        Rectangle().fill(ChipInTheme.elevated).frame(height: 1)
+                        Text("or").font(.caption).foregroundStyle(ChipInTheme.tertiaryLabel)
+                        Rectangle().fill(ChipInTheme.elevated).frame(height: 1)
+                    }
+                    .padding(.horizontal, 28)
+
+                    // Apple Sign In
+                    SignInWithAppleButton(.signIn) { request in
+                        request.requestedScopes = [.fullName, .email]
+                    } onCompletion: { result in
+                        Task { await handleAppleResult(result) }
+                    }
+                    .signInWithAppleButtonStyle(.white)
+                    .frame(height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+                    .padding(.horizontal, 28)
+                    .disabled(isSigningIn)
+
+                    #if DEBUG
+                    Button {
+                        Task { await handleGuestSignIn() }
+                    } label: {
+                        Text("Continue as guest (dev only)")
+                            .font(.caption)
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                    }
+                    .disabled(isSigningIn)
+                    #endif
+
+                    Spacer().frame(height: 40)
+                }
             }
+        }
+    }
+
+    private func handleEmailAuth() async {
+        localError = nil
+        auth.lastError = nil
+        isSigningIn = true
+        defer { isSigningIn = false }
+        do {
+            if isSignUp {
+                try await auth.signUpWithEmail(email: email, password: password, name: name)
+            } else {
+                try await auth.signInWithEmail(email: email, password: password)
+            }
+        } catch {
+            localError = error.localizedDescription
         }
     }
 
@@ -104,8 +166,31 @@ struct AuthView: View {
         do {
             try await auth.signInAnonymouslyForDevelopment()
         } catch {
-            localError =
-                "\(error.localizedDescription)\n\nIf this fails: Supabase → Authentication → Providers → enable **Anonymous**."
+            localError = "Enable Anonymous auth in Supabase → Authentication → Providers → Anonymous"
         }
+    }
+}
+
+private struct StyledTextField: View {
+    let placeholder: String
+    @Binding var text: String
+    var isSecure: Bool = false
+
+    var body: some View {
+        Group {
+            if isSecure {
+                SecureField(placeholder, text: $text)
+            } else {
+                TextField(placeholder, text: $text)
+            }
+        }
+        .padding(14)
+        .background(ChipInTheme.card)
+        .foregroundStyle(ChipInTheme.label)
+        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius)
+                .stroke(ChipInTheme.elevated, lineWidth: 1)
+        )
     }
 }
