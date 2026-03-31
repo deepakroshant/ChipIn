@@ -2,6 +2,22 @@ import Supabase
 import PostgREST
 import Foundation
 
+/// RPC body for `find_user_by_email`. Explicit `Encodable` avoids main-actor–isolated synthesis (Swift 6).
+private struct FindUserEmailParams: Sendable {
+    let lookup_email: String
+}
+
+extension FindUserEmailParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(lookup_email, forKey: .lookup_email)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case lookup_email
+    }
+}
+
 struct GroupService {
     func fetchGroups(for userId: UUID) async throws -> [Group] {
         let memberRows: [GroupMember] = try await supabase
@@ -54,6 +70,34 @@ struct GroupService {
             .order("created_at", ascending: false)
             .execute()
             .value
+    }
+
+    /// Everyone you share a group with (for suggesting friends on personal splits).
+    func fetchCoMembers(excludingSelf userId: UUID) async throws -> [AppUser] {
+        let groups = try await fetchGroups(for: userId)
+        var seen = Set<UUID>()
+        seen.insert(userId)
+        var users: [AppUser] = []
+        for g in groups {
+            let members = try await fetchMembers(for: g.id)
+            for u in members where !seen.contains(u.id) {
+                seen.insert(u.id)
+                users.append(u)
+            }
+        }
+        users.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return users
+    }
+
+    /// Resolve a registered user by email (requires `find_user_by_email` RPC in Supabase).
+    func findUserByEmail(_ email: String) async throws -> AppUser? {
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let rows: [AppUser] = try await supabase
+            .rpc("find_user_by_email", params: FindUserEmailParams(lookup_email: trimmed))
+            .execute()
+            .value
+        return rows.first
     }
 
     func fetchMembers(for groupId: UUID) async throws -> [AppUser] {

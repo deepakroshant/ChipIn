@@ -7,6 +7,7 @@ struct ChipInApp: App {
 
     init() {
         UserDefaults.standard.register(defaults: ["soundEnabled": true])
+        ChipInNavigationAppearance.apply()
     }
 
     var body: some Scene {
@@ -14,9 +15,9 @@ struct ChipInApp: App {
             SwiftUI.Group {
                 if auth.isLoading {
                     ProgressView()
-                        .tint(Color(hex: "#F97316"))
+                        .tint(ChipInTheme.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(hex: "#0A0A0A"))
+                        .background(ChipInTheme.background)
                 } else if auth.isAuthenticated {
                     ContentView()
                 } else {
@@ -24,6 +25,7 @@ struct ChipInApp: App {
                 }
             }
             .environment(auth)
+            .preferredColorScheme(.dark)
             .task { await auth.initialize() }
         }
     }

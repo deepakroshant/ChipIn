@@ -2,7 +2,8 @@ import Foundation
 
 struct Expense: Codable, Identifiable, Hashable {
     let id: UUID
-    let groupId: UUID
+    /// `nil` = personal / friends split (no group).
+    let groupId: UUID?
     let paidBy: UUID
     var title: String
     var totalAmount: Decimal

@@ -12,8 +12,9 @@ struct NewExpenseItem {
 struct ExpenseService {
     private let currencyService = CurrencyService()
 
+    /// `groupId` nil = split with friends only (no group ledger).
     func createExpense(
-        groupId: UUID,
+        groupId: UUID?,
         paidBy: UUID,
         title: String,
         amount: Decimal,
@@ -28,7 +29,7 @@ struct ExpenseService {
         let cadAmount = try await currencyService.convert(amount: amount, from: currency)
 
         struct ExpenseInsert: Encodable {
-            let group_id: String
+            let group_id: String?
             let paid_by: String
             let title: String
             let total_amount: String
@@ -42,7 +43,7 @@ struct ExpenseService {
         let expense: Expense = try await supabase
             .from("expenses")
             .insert(ExpenseInsert(
-                group_id: groupId.uuidString,
+                group_id: groupId?.uuidString,
                 paid_by: paidBy.uuidString,
                 title: title,
                 total_amount: "\(amount)",

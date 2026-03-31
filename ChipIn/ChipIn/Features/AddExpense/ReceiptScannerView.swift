@@ -12,15 +12,15 @@ struct ReceiptScannerView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "#0A0A0A").ignoresSafeArea()
+                ChipInTheme.background.ignoresSafeArea()
 
                 if isProcessing {
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.5)
-                            .tint(Color(hex: "#F97316"))
+                            .tint(ChipInTheme.accent)
                         Text("Reading receipt...")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(ChipInTheme.secondaryLabel)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -29,13 +29,13 @@ struct ReceiptScannerView: View {
 
                         Image(systemName: "camera.viewfinder")
                             .font(.system(size: 72))
-                            .foregroundStyle(Color(hex: "#F97316"))
+                            .foregroundStyle(ChipInTheme.accent)
 
                         Text("Scan a Receipt")
-                            .font(.title2).bold().foregroundStyle(.white)
+                            .font(.title2).bold().foregroundStyle(ChipInTheme.label)
 
                         Text("AI reads all items, prices, and tax automatically.\nTax is split proportionally per person.")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(ChipInTheme.secondaryLabel)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
 
@@ -43,7 +43,7 @@ struct ReceiptScannerView: View {
                             Label("Choose Photo", systemImage: "photo")
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color(hex: "#F97316"))
+                                .background(ChipInTheme.accent)
                                 .foregroundStyle(.black)
                                 .fontWeight(.semibold)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -66,7 +66,7 @@ struct ReceiptScannerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color(hex: "#F97316"))
+                        .foregroundStyle(ChipInTheme.accent)
                 }
             }
             .onChange(of: selectedItem) { _, item in

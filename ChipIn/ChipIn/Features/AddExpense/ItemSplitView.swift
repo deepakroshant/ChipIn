@@ -14,14 +14,14 @@ struct ItemSplitView: View {
                             HStack {
                                 Text(receipt.items[idx].name)
                                     .fontWeight(.medium)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(ChipInTheme.label)
                                 Spacer()
                                 VStack(alignment: .trailing, spacing: 2) {
                                     Text(receipt.items[idx].price, format: .currency(code: "CAD"))
-                                        .foregroundStyle(Color(hex: "#F97316"))
+                                        .foregroundStyle(ChipInTheme.accent)
                                     Text("+\(receipt.items[idx].taxPortion, format: .currency(code: "CAD")) tax")
                                         .font(.caption2)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(ChipInTheme.secondaryLabel)
                                 }
                             }
 
@@ -32,9 +32,9 @@ struct ItemSplitView: View {
                                 }
                             }
                             .pickerStyle(.menu)
-                            .tint(Color(hex: "#F97316"))
+                            .tint(ChipInTheme.accent)
                         }
-                        .listRowBackground(Color(hex: "#1C1C1E"))
+                        .listRowBackground(ChipInTheme.card)
                     }
                 }
 
@@ -44,36 +44,36 @@ struct ItemSplitView: View {
                         Spacer()
                         Text(receipt.subtotal, format: .currency(code: "CAD"))
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
-                    .foregroundStyle(.secondary)
+                    .listRowBackground(ChipInTheme.card)
+                    .foregroundStyle(ChipInTheme.secondaryLabel)
 
                     HStack {
                         Text("Tax")
                         Spacer()
                         Text(receipt.tax, format: .currency(code: "CAD"))
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
-                    .foregroundStyle(.secondary)
+                    .listRowBackground(ChipInTheme.card)
+                    .foregroundStyle(ChipInTheme.secondaryLabel)
 
                     HStack {
                         Text("Total").bold()
                         Spacer()
                         Text(receipt.total, format: .currency(code: "CAD"))
                             .bold()
-                            .foregroundStyle(Color(hex: "#F97316"))
+                            .foregroundStyle(ChipInTheme.accent)
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Color(hex: "#0A0A0A"))
+            .background(ChipInTheme.background)
             .navigationTitle("Assign Items")
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
-                        .foregroundStyle(Color(hex: "#F97316"))
+                        .foregroundStyle(ChipInTheme.accent)
                 }
             }
         }

@@ -29,25 +29,25 @@ struct ProfileView: View {
                             )
                         VStack(alignment: .leading, spacing: 2) {
                             Text(auth.currentUser?.name ?? "")
-                                .font(.headline).foregroundStyle(.white)
+                                .font(.headline).foregroundStyle(ChipInTheme.label)
                             Text(auth.currentUser?.email ?? "")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(ChipInTheme.secondaryLabel)
                         }
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 }
 
                 // Interac e-Transfer
                 Section {
                     HStack {
                         Label("Interac Contact", systemImage: "envelope.fill")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(ChipInTheme.secondaryLabel)
                         TextField("Email or phone", text: $interacContact)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(ChipInTheme.label)
                             .multilineTextAlignment(.trailing)
                             .onSubmit { saveInteracContact() }
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 } header: {
                     Text("Interac e-Transfer")
                 } footer: {
@@ -58,7 +58,7 @@ struct ProfileView: View {
                 Section("Appearance") {
                     HStack {
                         Text("Accent Colour")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(ChipInTheme.label)
                         Spacer()
                         HStack(spacing: 12) {
                             ForEach(accents, id: \.self) { hex in
@@ -75,27 +75,27 @@ struct ProfileView: View {
                             }
                         }
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 }
 
                 // Privacy & Security
                 Section("Privacy & Security") {
                     Toggle(isOn: $biometricEnabled) {
                         Label("Face ID / Touch ID Lock", systemImage: "faceid")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(ChipInTheme.label)
                     }
                     .tint(Color(hex: selectedAccent))
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                     .onChange(of: biometricEnabled) { _, val in
                         UserDefaults.standard.set(val, forKey: "biometricEnabled")
                     }
 
                     Toggle(isOn: $hideBalances) {
                         Label("Hide Balances", systemImage: "eye.slash")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(ChipInTheme.label)
                     }
                     .tint(Color(hex: selectedAccent))
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                     .onChange(of: hideBalances) { _, val in
                         UserDefaults.standard.set(val, forKey: "hideBalances")
                     }
@@ -105,10 +105,10 @@ struct ProfileView: View {
                 Section("Sounds & Haptics") {
                     Toggle(isOn: $soundEnabled) {
                         Label("Custom Sounds", systemImage: "speaker.wave.2.fill")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(ChipInTheme.label)
                     }
                     .tint(Color(hex: selectedAccent))
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                     .onChange(of: soundEnabled) { _, val in
                         UserDefaults.standard.set(val, forKey: "soundEnabled")
                     }
@@ -117,8 +117,8 @@ struct ProfileView: View {
                 // Widgets
                 Section {
                     Label("Configure Widgets", systemImage: "square.grid.2x2")
-                        .foregroundStyle(.white)
-                        .listRowBackground(Color(hex: "#1C1C1E"))
+                        .foregroundStyle(ChipInTheme.label)
+                        .listRowBackground(ChipInTheme.card)
                 } header: {
                     Text("Widgets")
                 } footer: {
@@ -128,11 +128,11 @@ struct ProfileView: View {
                 // About
                 Section("About") {
                     HStack {
-                        Text("Version").foregroundStyle(.secondary)
+                        Text("Version").foregroundStyle(ChipInTheme.secondaryLabel)
                         Spacer()
-                        Text("1.0.0").foregroundStyle(.secondary)
+                        Text("1.0.0").foregroundStyle(ChipInTheme.secondaryLabel)
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 }
 
                 // Sign out
@@ -146,14 +146,14 @@ struct ProfileView: View {
                             Spacer()
                         }
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Color(hex: "#0A0A0A"))
+            .background(ChipInTheme.background)
             .navigationTitle("Profile")
-            .toolbarBackground(Color(hex: "#1C1C1E"), for: .navigationBar)
+            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .onAppear {
                 interacContact = auth.currentUser?.interacContact ?? ""

@@ -8,17 +8,17 @@ struct ExpenseRow: View {
             Text(ExpenseCategory(rawValue: expense.category)?.emoji ?? "📦")
                 .font(.title2)
                 .frame(width: 42, height: 42)
-                .background(Color(hex: "#2C2C2E"))
+                .background(ChipInTheme.elevated)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(expense.title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(ChipInTheme.label)
                 Text(expense.createdAt, style: .date)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ChipInTheme.secondaryLabel)
             }
 
             Spacer()
@@ -26,7 +26,7 @@ struct ExpenseRow: View {
             Text(expense.cadAmount, format: .currency(code: "CAD"))
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundStyle(Color(hex: "#F97316"))
+                .foregroundStyle(ChipInTheme.accent)
         }
         .padding(.vertical, 4)
     }

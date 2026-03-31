@@ -13,17 +13,17 @@ struct GroupDetailView: View {
                     ForEach(members) { member in
                         HStack {
                             Circle()
-                                .fill(Color(hex: "#F97316").opacity(0.2))
+                                .fill(ChipInTheme.accent.opacity(0.2))
                                 .frame(width: 32, height: 32)
                                 .overlay(
                                     Text(member.name.prefix(1))
                                         .font(.caption).bold()
-                                        .foregroundStyle(Color(hex: "#F97316"))
+                                        .foregroundStyle(ChipInTheme.accent)
                                 )
                             Text(member.name)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(ChipInTheme.label)
                         }
-                        .listRowBackground(Color(hex: "#1C1C1E"))
+                        .listRowBackground(ChipInTheme.card)
                     }
                 }
             }
@@ -31,13 +31,13 @@ struct GroupDetailView: View {
             Section("Expenses") {
                 ForEach(expenses) { expense in
                     ExpenseRow(expense: expense)
-                        .listRowBackground(Color(hex: "#1C1C1E"))
+                        .listRowBackground(ChipInTheme.card)
                 }
             }
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color(hex: "#0A0A0A"))
+        .background(ChipInTheme.background)
         .navigationTitle("\(group.emoji) \(group.name)")
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task {

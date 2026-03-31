@@ -9,9 +9,9 @@ struct FloatingAddButton: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(.black)
                 .frame(width: 56, height: 56)
-                .background(Color(hex: "#F97316"))
+                .background(ChipInTheme.accent)
                 .clipShape(Circle())
-                .shadow(color: Color(hex: "#F97316").opacity(0.5), radius: 12, y: 4)
+                .shadow(color: ChipInTheme.accent.opacity(0.45), radius: 12, y: 4)
         }
         .buttonStyle(.plain)
     }

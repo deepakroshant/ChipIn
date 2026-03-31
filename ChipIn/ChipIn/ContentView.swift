@@ -25,9 +25,10 @@ struct ContentView: View {
                     .tabItem { Label("Profile", systemImage: "person.fill") }
                     .tag(3)
             }
-            .tint(Color(hex: "#F97316"))
-            .toolbarBackground(Color(hex: "#1C1C1E"), for: .tabBar)
+            .tint(ChipInTheme.accent)
+            .toolbarBackground(ChipInTheme.card, for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar)
+            .toolbarColorScheme(.dark, for: .tabBar)
 
             FloatingAddButton {
                 showAddExpense = true

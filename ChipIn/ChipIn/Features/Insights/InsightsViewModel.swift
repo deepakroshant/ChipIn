@@ -19,8 +19,8 @@ class InsightsViewModel {
     var isLoading = false
 
     private let colours: [Color] = [
-        Color(hex: "#F97316"), Color(hex: "#3B82F6"),
-        Color(hex: "#10B981"), Color(hex: "#8B5CF6"),
+        ChipInTheme.accent, Color(hex: "#3B82F6"),
+        ChipInTheme.success, Color(hex: "#8B5CF6"),
         Color(hex: "#EC4899"), Color(hex: "#FBBF24")
     ]
 

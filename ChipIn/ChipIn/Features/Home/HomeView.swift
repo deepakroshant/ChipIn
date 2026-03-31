@@ -8,35 +8,47 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    BalanceCard(balance: vm.netBalance)
+                    Text("Chip In")
+                        .font(.largeTitle.weight(.bold))
+                        .foregroundStyle(ChipInTheme.label)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
 
-                    if !vm.recentActivity.isEmpty {
+                    BalanceCard(balance: vm.overallNet)
+                        .padding(.horizontal)
+
+                    if vm.personBalances.isEmpty {
+                        emptyActivityPlaceholder
+                    } else {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Recent Activity")
+                            Text("Balances")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(ChipInTheme.label)
                                 .padding(.horizontal)
 
                             LazyVStack(spacing: 0) {
-                                ForEach(vm.recentActivity) { expense in
-                                    ExpenseRow(expense: expense)
-                                        .padding(.horizontal)
-                                    Divider().background(Color(hex: "#2C2C2E"))
+                                ForEach(vm.personBalances) { pb in
+                                    NavigationLink(destination: PersonDetailView(balance: pb)) {
+                                        PersonBalanceRow(personBalance: pb)
+                                            .padding(.horizontal)
+                                    }
+                                    .buttonStyle(.plain)
+                                    if pb.id != vm.personBalances.last?.id {
+                                        Divider().background(ChipInTheme.elevated)
+                                            .padding(.leading, 66)
+                                    }
                                 }
                             }
-                            .background(Color(hex: "#1C1C1E"))
+                            .background(ChipInTheme.card)
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                             .padding(.horizontal)
                         }
                     }
                 }
-                .padding(.top)
+                .padding(.top, 4)
             }
-            .background(Color(hex: "#0A0A0A"))
-            .navigationTitle("Chip In")
-            .toolbarBackground(Color(hex: "#1C1C1E"), for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .background(ChipInTheme.background)
+            .toolbar(.hidden, for: .navigationBar)
             .task {
                 if let id = auth.currentUser?.id {
                     await vm.load(currentUserId: id)
@@ -55,5 +67,27 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    private var emptyActivityPlaceholder: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "tray.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(ChipInTheme.tertiaryLabel)
+            Text("No recent activity")
+                .font(.headline)
+                .foregroundStyle(ChipInTheme.label)
+            Text("Tap +, choose Friends, then add someone by ChipIn email or pick people you know. Group trips stay under Groups—you don’t need a group to split with one person.")
+                .font(.subheadline)
+                .foregroundStyle(ChipInTheme.secondaryLabel)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 48)
+        .padding(.horizontal)
+        .background(ChipInTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
     }
 }

@@ -10,7 +10,7 @@ struct InsightsView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Monthly total card
-                    StatCard(title: "Spent This Month", value: vm.monthlyTotal, color: Color(hex: "#F97316"))
+                    StatCard(title: "Spent This Month", value: vm.monthlyTotal, color: ChipInTheme.accent)
                         .padding(.horizontal)
 
                     // Category donut chart
@@ -18,7 +18,7 @@ struct InsightsView: View {
                         VStack(alignment: .leading, spacing: 14) {
                             Text("By Category")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(ChipInTheme.label)
                                 .padding(.horizontal)
 
                             Chart(vm.categoryStats) { stat in
@@ -40,11 +40,11 @@ struct InsightsView: View {
                                             .fill(stat.colour)
                                             .frame(width: 10, height: 10)
                                         Text("\(stat.emoji) \(stat.category)")
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(ChipInTheme.label)
                                             .font(.subheadline)
                                         Spacer()
                                         Text(stat.total, format: .currency(code: "CAD"))
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(ChipInTheme.secondaryLabel)
                                             .font(.subheadline)
                                     }
                                     .padding(.horizontal)
@@ -52,7 +52,7 @@ struct InsightsView: View {
                             }
                             .padding(.bottom, 16)
                         }
-                        .background(Color(hex: "#1C1C1E"))
+                        .background(ChipInTheme.card)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal)
                     }
@@ -62,38 +62,38 @@ struct InsightsView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Settlement History")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(ChipInTheme.label)
                                 .padding(.horizontal)
 
                             LazyVStack(spacing: 0) {
                                 ForEach(vm.settlements) { settlement in
                                     HStack {
                                         Image(systemName: "arrow.right.circle.fill")
-                                            .foregroundStyle(Color(hex: "#10B981"))
+                                            .foregroundStyle(ChipInTheme.success)
                                         Text(settlement.settledAt, style: .date)
                                             .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(ChipInTheme.secondaryLabel)
                                         Spacer()
                                         Text(settlement.amount, format: .currency(code: "CAD"))
                                             .fontWeight(.semibold)
-                                            .foregroundStyle(Color(hex: "#10B981"))
+                                            .foregroundStyle(ChipInTheme.success)
                                     }
                                     .padding(.horizontal)
                                     .padding(.vertical, 10)
-                                    Divider().background(Color(hex: "#2C2C2E"))
+                                    Divider().background(ChipInTheme.elevated)
                                 }
                             }
                         }
-                        .background(Color(hex: "#1C1C1E"))
+                        .background(ChipInTheme.card)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal)
                     }
                 }
                 .padding(.top)
             }
-            .background(Color(hex: "#0A0A0A"))
+            .background(ChipInTheme.background)
             .navigationTitle("Insights")
-            .toolbarBackground(Color(hex: "#1C1C1E"), for: .navigationBar)
+            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .task {
                 if let id = auth.currentUser?.id { await vm.load(userId: id) }
@@ -116,7 +116,7 @@ struct StatCard: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ChipInTheme.secondaryLabel)
                 .textCase(.uppercase)
                 .tracking(0.5)
             Text(value, format: .currency(code: "CAD"))
@@ -125,7 +125,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(hex: "#1C1C1E"))
+        .background(ChipInTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

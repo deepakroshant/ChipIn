@@ -21,28 +21,28 @@ struct GroupsView: View {
                                 Text(group.name)
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(ChipInTheme.label)
                                 Text("Tap to view expenses")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(ChipInTheme.secondaryLabel)
                             }
                         }
                         .padding(.vertical, 4)
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Color(hex: "#0A0A0A"))
+            .background(ChipInTheme.background)
             .navigationTitle("Groups")
-            .toolbarBackground(Color(hex: "#1C1C1E"), for: .navigationBar)
+            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { showCreate = true }) {
                         Image(systemName: "plus")
-                            .foregroundStyle(Color(hex: "#F97316"))
+                            .foregroundStyle(ChipInTheme.accent)
                     }
                 }
             }
@@ -74,7 +74,7 @@ struct CreateGroupSheet: View {
             Form {
                 Section("Group Details") {
                     HStack {
-                        Text("Icon").foregroundStyle(.secondary)
+                        Text("Icon").foregroundStyle(ChipInTheme.secondaryLabel)
                         Spacer()
                         TextField("", text: $emoji)
                             .multilineTextAlignment(.center)

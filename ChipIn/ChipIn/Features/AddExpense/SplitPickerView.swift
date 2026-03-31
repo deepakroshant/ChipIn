@@ -11,29 +11,34 @@ struct SplitPickerView: View {
         (.shares, "Shares", "chart.pie")
     ]
 
+    private let columns = [
+        GridItem(.adaptive(minimum: 76, maximum: 120), spacing: 10)
+    ]
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(options, id: \.0.rawValue) { type, label, icon in
-                    Button {
-                        splitType = type
-                    } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: icon)
-                                .font(.headline)
-                            Text(label)
-                                .font(.caption)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(splitType == type ? Color(hex: "#F97316") : Color(hex: "#2C2C2E"))
-                        .foregroundStyle(splitType == type ? .black : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+        LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(options, id: \.0.rawValue) { type, label, icon in
+                Button {
+                    splitType = type
+                } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: icon)
+                            .font(.headline)
+                        Text(label)
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
-                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(splitType == type ? ChipInTheme.accent : ChipInTheme.elevated)
+                    .foregroundStyle(splitType == type ? Color.black : Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(label)
             }
-            .padding(.vertical, 4)
         }
+        .padding(.vertical, 4)
     }
 }

@@ -10,22 +10,22 @@ struct FriendsView: View {
                 ForEach(friends) { friend in
                     HStack(spacing: 12) {
                         Circle()
-                            .fill(Color(hex: "#F97316").opacity(0.2))
+                            .fill(ChipInTheme.accent.opacity(0.2))
                             .frame(width: 40, height: 40)
                             .overlay(
                                 Text(friend.name.prefix(1))
                                     .font(.subheadline).bold()
-                                    .foregroundStyle(Color(hex: "#F97316"))
+                                    .foregroundStyle(ChipInTheme.accent)
                             )
                         Text(friend.name)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(ChipInTheme.label)
                     }
-                    .listRowBackground(Color(hex: "#1C1C1E"))
+                    .listRowBackground(ChipInTheme.card)
                 }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Color(hex: "#0A0A0A"))
+            .background(ChipInTheme.background)
             .navigationTitle("Friends")
             .toolbarColorScheme(.dark, for: .navigationBar)
         }

@@ -4,7 +4,7 @@ struct BalanceCard: View {
     let balance: Decimal
 
     private var isOwed: Bool { balance >= 0 }
-    private var color: Color { isOwed ? Color(hex: "#10B981") : Color(hex: "#F87171") }
+    private var color: Color { isOwed ? ChipInTheme.success : ChipInTheme.danger }
     private var label: String { isOwed ? "You're owed" : "You owe" }
 
     var body: some View {
@@ -12,7 +12,7 @@ struct BalanceCard: View {
             Text(label)
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ChipInTheme.secondaryLabel)
                 .textCase(.uppercase)
                 .tracking(1)
 
@@ -22,7 +22,7 @@ struct BalanceCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(Color(hex: "#1C1C1E"))
+        .background(ChipInTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }

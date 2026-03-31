@@ -14,20 +14,20 @@ struct SettleUpView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "#0A0A0A").ignoresSafeArea()
+                ChipInTheme.background.ignoresSafeArea()
 
                 if vm.isSettled {
                     VStack(spacing: 24) {
                         ConfettiView()
                         Text("🎉").font(.system(size: 72))
                         Text("All settled!")
-                            .font(.title).bold().foregroundStyle(.white)
+                            .font(.title).bold().foregroundStyle(ChipInTheme.label)
                         Text("You sent \(amount, format: .currency(code: "CAD")) to \(toUser.name)")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(ChipInTheme.secondaryLabel)
                             .multilineTextAlignment(.center)
                         Button("Done") { dismiss() }
                             .buttonStyle(.borderedProminent)
-                            .tint(Color(hex: "#F97316"))
+                            .tint(ChipInTheme.accent)
                     }
                     .padding()
                 } else {
@@ -36,19 +36,19 @@ struct SettleUpView: View {
 
                         VStack(spacing: 6) {
                             Text("You owe \(toUser.name)")
-                                .font(.headline).foregroundStyle(.secondary)
+                                .font(.headline).foregroundStyle(ChipInTheme.secondaryLabel)
                             Text(amount, format: .currency(code: "CAD"))
                                 .font(.system(size: 52, weight: .bold, design: .rounded))
-                                .foregroundStyle(Color(hex: "#F87171"))
+                                .foregroundStyle(ChipInTheme.danger)
                         }
 
                         if let interac = toUser.interacContact {
                             HStack {
-                                Image(systemName: "envelope.fill").foregroundStyle(.secondary)
-                                Text(interac).foregroundStyle(.white)
+                                Image(systemName: "envelope.fill").foregroundStyle(ChipInTheme.secondaryLabel)
+                                Text(interac).foregroundStyle(ChipInTheme.label)
                             }
                             .padding(12)
-                            .background(Color(hex: "#1C1C1E"))
+                            .background(ChipInTheme.card)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
 
@@ -61,8 +61,8 @@ struct SettleUpView: View {
                                       systemImage: amountCopied ? "checkmark" : "doc.on.doc")
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(Color(hex: "#2C2C2E"))
-                                    .foregroundStyle(.white)
+                                    .background(ChipInTheme.elevated)
+                                    .foregroundStyle(ChipInTheme.label)
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
 
@@ -70,7 +70,7 @@ struct SettleUpView: View {
                                 Label("Open Bank App", systemImage: "building.columns.fill")
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(Color(hex: "#F97316"))
+                                    .background(ChipInTheme.accent)
                                     .foregroundStyle(.black)
                                     .fontWeight(.semibold)
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -89,8 +89,8 @@ struct SettleUpView: View {
                                 Text("I've sent it — mark as settled")
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(Color(hex: "#1C1C1E"))
-                                    .foregroundStyle(Color(hex: "#F97316"))
+                                    .background(ChipInTheme.card)
+                                    .foregroundStyle(ChipInTheme.accent)
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
                         }
@@ -123,12 +123,12 @@ struct BankPickerSheet: View {
                     onSelect(bank)
                     dismiss()
                 }
-                .foregroundStyle(.white)
-                .listRowBackground(Color(hex: "#1C1C1E"))
+                .foregroundStyle(ChipInTheme.label)
+                .listRowBackground(ChipInTheme.card)
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Color(hex: "#0A0A0A"))
+            .background(ChipInTheme.background)
             .navigationTitle("Open Bank App")
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
