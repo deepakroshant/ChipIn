@@ -1,0 +1,340 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1774919191808,
+  "projectRoot": "/Users/deepak/Claude-projects/Splitwise",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "ChipIn": {
+      "path": "ChipIn",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1774919191794,
+      "keyFiles": []
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1774919191794,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "ChipIn/Core/AuthManager.swift",
+      "accessCount": 6,
+      "lastAccessed": 1774919615659,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn",
+      "accessCount": 5,
+      "lastAccessed": 1774919551961,
+      "type": "directory"
+    },
+    {
+      "path": "ChipIn/Core/Notifications.swift",
+      "accessCount": 5,
+      "lastAccessed": 1774919597707,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/ChipInApp.swift",
+      "accessCount": 5,
+      "lastAccessed": 1774919607188,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 5,
+      "lastAccessed": 1774919610625,
+      "type": "directory"
+    },
+    {
+      "path": "ChipIn/Features/AddExpense/AddExpenseViewModel.swift",
+      "accessCount": 4,
+      "lastAccessed": 1774919568858,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Core/SupabaseClient.swift",
+      "accessCount": 4,
+      "lastAccessed": 1774919597456,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Home/HomeView.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919416638,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Models/Expense.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919447229,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Groups/GroupsView.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919476388,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/AddExpense/AddExpenseView.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919522812,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Services/SoundService.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919531842,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Insights/InsightsView.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919558044,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Profile/ProfileView.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919588297,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/ContentView.swift",
+      "accessCount": 3,
+      "lastAccessed": 1774919641040,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Services/GroupService.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774919443898,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Models/Group.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774919447521,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Resources/Sounds/README.md",
+      "accessCount": 2,
+      "lastAccessed": 1774919522124,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/AddExpense/ReceiptScannerView.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774919532353,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Services/ReceiptService.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774919543688,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Models/User.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774919565187,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Core/NotificationManager.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774919607390,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Core/AppDelegate.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774919607584,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/001_initial_schema.sql",
+      "accessCount": 1,
+      "lastAccessed": 1774919334469,
+      "type": "file"
+    },
+    {
+      "path": "supabase/edge-functions/parse-receipt/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1774919340010,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Models/Settlement.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919356629,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Models/Comment.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919358033,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Auth/AuthView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919372123,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Components/FloatingAddButton.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919375697,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Components/BalanceCard.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919401350,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Components/ExpenseRow.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919405330,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Home/HomeViewModel.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919411247,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Groups/GroupsViewModel.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919433644,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Groups/GroupDetailView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919454748,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Groups/FriendsView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919457574,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Components",
+      "accessCount": 1,
+      "lastAccessed": 1774919463698,
+      "type": "directory"
+    },
+    {
+      "path": "ChipIn/Components/ConfettiView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919479376,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Services/CurrencyService.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919482294,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Services/SettlementService.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919486179,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/SettleUp/SettleUpViewModel.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919489931,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Services/ExpenseService.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919490993,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/AddExpense/SplitPickerView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919504451,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/SettleUp/SettleUpView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919505104,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/AddExpense/ItemSplitView.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919532742,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Features/Insights/InsightsViewModel.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919543668,
+      "type": "file"
+    },
+    {
+      "path": "ChipInWidget/ChipInWidget.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919601596,
+      "type": "file"
+    },
+    {
+      "path": "ChipInWidget/README.md",
+      "accessCount": 1,
+      "lastAccessed": 1774919624257,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/Core/SyncManager.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774919631679,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

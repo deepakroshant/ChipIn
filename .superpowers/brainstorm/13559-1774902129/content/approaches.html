@@ -1,0 +1,39 @@
+<h2>How should we build Chip In?</h2>
+<p class="subtitle">Three architectural approaches — each with real trade-offs</p>
+
+<div class="options">
+  <div class="option" data-choice="swiftui" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Native SwiftUI + Supabase</h3>
+      <p><strong>Best iOS feel, best performance.</strong> SwiftUI for the UI (buttery animations, native controls, widgets, lock screen), Supabase for real-time sync, auth, and database. Receipt scanning via iOS Vision framework. Offline via SwiftData.</p>
+      <div style="margin-top:8px;font-size:12px;color:#10B981">✅ Smoothest iOS experience &nbsp;✅ Widgets + Shortcuts &nbsp;✅ Free tier on Supabase</div>
+      <div style="margin-top:4px;font-size:12px;color:#F87171">❌ iOS only &nbsp;❌ Requires Swift knowledge</div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="rn" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>React Native + Expo + Supabase</h3>
+      <p><strong>Fast to build, cross-platform ready.</strong> Expo handles the iOS build pipeline, React Native for UI, Supabase for backend. Can add Android later with minimal extra work. Receipt scanning via Expo Camera + OpenAI Vision API.</p>
+      <div style="margin-top:8px;font-size:12px;color:#10B981">✅ Faster dev &nbsp;✅ Android-ready later &nbsp;✅ Large ecosystem</div>
+      <div style="margin-top:4px;font-size:12px;color:#F87171">❌ Slightly less native feel &nbsp;❌ Widgets need native module</div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="flutter" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Flutter + Firebase</h3>
+      <p><strong>Beautiful custom UI, cross-platform.</strong> Flutter gives pixel-perfect custom designs that look stunning. Firebase for real-time sync, auth, and push notifications. Easiest receipt scanning with ML Kit.</p>
+      <div style="margin-top:8px;font-size:12px;color:#10B981">✅ Custom UI freedom &nbsp;✅ Real-time out of the box &nbsp;✅ iOS + Android</div>
+      <div style="margin-top:4px;font-size:12px;color:#F87171">❌ Firebase costs scale fast &nbsp;❌ Dart language &nbsp;❌ Heavier app size</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;padding:16px;background:rgba(249,115,22,0.1);border-radius:12px;border:1px solid rgba(249,115,22,0.3)">
+  <div class="label">My Recommendation</div>
+  <p style="margin-top:4px"><strong>Option A — Native SwiftUI + Supabase.</strong> Since you want superior iOS UI, widgets, lock screen support, and buttery smooth performance, native is the right call. Supabase is completely free at your scale and handles real-time sync, auth, and offline perfectly.</p>
+</div>

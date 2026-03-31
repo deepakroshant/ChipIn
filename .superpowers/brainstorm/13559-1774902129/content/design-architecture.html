@@ -1,0 +1,58 @@
+<h2>Design Section 1: Architecture & Navigation</h2>
+<p class="subtitle">How the app is structured at the highest level</p>
+
+<div class="section">
+  <h3>App Structure</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+    <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px">
+      <div class="label">Frontend</div>
+      <p style="margin-top:6px;font-size:13px">SwiftUI + SwiftData (local cache + offline). Targets iOS 17+. Modular feature folders.</p>
+    </div>
+    <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px">
+      <div class="label">Backend</div>
+      <p style="margin-top:6px;font-size:13px">Supabase — PostgreSQL database, real-time subscriptions, Auth (magic link + Apple Sign-in), Edge Functions for receipt AI.</p>
+    </div>
+    <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px">
+      <div class="label">Ads</div>
+      <p style="margin-top:6px;font-size:13px">Google AdMob — banner ads on list screens, interstitials between major actions (max 1/session). No ads inside expense creation flow.</p>
+    </div>
+    <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px">
+      <div class="label">Receipt AI</div>
+      <p style="margin-top:6px;font-size:13px">iOS Vision framework (free, on-device OCR) → parsed via Supabase Edge Function with OpenAI. No data leaves device unnecessarily.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Navigation (Tab Bar — 4 tabs)</h3>
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <div style="background:#1C1C1E;border-radius:10px;padding:12px 16px;text-align:center;flex:1;min-width:80px">
+      <div style="font-size:22px">🏠</div>
+      <div style="font-size:12px;color:#F97316;margin-top:4px;font-weight:600">Home</div>
+      <div style="font-size:11px;color:#8E8E93;margin-top:2px">Total balance, recent activity</div>
+    </div>
+    <div style="background:#1C1C1E;border-radius:10px;padding:12px 16px;text-align:center;flex:1;min-width:80px">
+      <div style="font-size:22px">👥</div>
+      <div style="font-size:12px;color:#F97316;margin-top:4px;font-weight:600">Groups</div>
+      <div style="font-size:11px;color:#8E8E93;margin-top:2px">All groups, per-group balance</div>
+    </div>
+    <div style="background:#1C1C1E;border-radius:10px;padding:12px 16px;text-align:center;flex:1;min-width:80px">
+      <div style="font-size:22px">📊</div>
+      <div style="font-size:12px;color:#F97316;margin-top:4px;font-weight:600">Insights</div>
+      <div style="font-size:11px;color:#8E8E93;margin-top:2px">Charts, categories, trends</div>
+    </div>
+    <div style="background:#1C1C1E;border-radius:10px;padding:12px 16px;text-align:center;flex:1;min-width:80px">
+      <div style="font-size:22px">👤</div>
+      <div style="font-size:12px;color:#F97316;margin-top:4px;font-weight:600">Profile</div>
+      <div style="font-size:11px;color:#8E8E93;margin-top:2px">Settings, friends, account</div>
+    </div>
+  </div>
+  <div style="margin-top:12px;text-align:center">
+    <div style="display:inline-block;background:#F97316;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:24px;box-shadow:0 4px 20px rgba(249,115,22,0.5)">＋</div>
+    <div style="font-size:12px;color:#8E8E93;margin-top:4px">Floating add button — always accessible</div>
+  </div>
+</div>
+
+<div style="padding:14px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px">
+  <strong style="color:#10B981">Does this structure look right so far?</strong> 4 tabs + floating add button, SwiftUI native on Supabase backend.
+</div>

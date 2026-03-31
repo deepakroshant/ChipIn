@@ -1,0 +1,68 @@
+<h2>Design Section 3: Data Model</h2>
+<p class="subtitle">How everything is stored — clean, simple, extensible</p>
+
+<div class="section">
+  <h3>Core Tables (Supabase / PostgreSQL)</h3>
+  <div style="display:grid;gap:10px;margin-top:12px">
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">👤 users</div>
+      id · name · avatar_url · email · default_currency (CAD) · created_at
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">👥 groups</div>
+      id · name · emoji · colour · created_by · created_at
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">🔗 group_members</div>
+      group_id · user_id · joined_at · role (admin/member)
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">💸 expenses</div>
+      id · group_id · paid_by (user_id) · title · total_amount · currency · category · receipt_url · is_recurring · recurrence_interval · created_at · updated_at
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">🧾 expense_items  <span style="color:#8E8E93;font-weight:400">(for receipt scanning)</span></div>
+      id · expense_id · name · price · tax_portion · assigned_to (user_id)
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">⚖️ expense_splits</div>
+      id · expense_id · user_id · owed_amount · split_type (equal/percent/exact/byItem/shares) · is_settled
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">✅ settlements</div>
+      id · from_user_id · to_user_id · amount · group_id · settled_at · method (interac/cash/other)
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">💬 comments</div>
+      id · expense_id · user_id · body · created_at
+    </div>
+
+    <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5">
+      <div style="color:#F97316;font-weight:700;margin-bottom:6px">🔔 notifications</div>
+      id · user_id · type · reference_id · is_read · created_at
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>Offline & Sync Strategy</h3>
+  <div style="background:#1C1C1E;border-radius:12px;padding:14px;font-size:13px;color:#EBEBF5;line-height:1.8">
+    • <strong>SwiftData</strong> mirrors all user data locally — app works 100% offline<br>
+    • Changes queued locally, synced to Supabase when connection restores<br>
+    • <strong>Supabase Realtime</strong> pushes live updates to all group members instantly<br>
+    • Conflict resolution: last-write-wins with server timestamp
+  </div>
+</div>
+
+<div style="padding:14px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px">
+  <strong style="color:#10B981">Does this data model look right?</strong> Note the <code>expense_items</code> table — that's what powers the per-item receipt splitting with proportional tax.
+</div>
