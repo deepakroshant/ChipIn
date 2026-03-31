@@ -11,7 +11,7 @@ struct ChipInApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
+            SwiftUI.Group {
                 if auth.isLoading {
                     ProgressView()
                         .tint(Color(hex: "#F97316"))

@@ -52,7 +52,7 @@ class AuthManager {
             throw AuthError.invalidCredential
         }
         let session = try await supabase.auth.signInWithIdToken(
-            credentials: .init(provider: .apple, idToken: tokenString)
+            credentials: OpenIDConnectCredentials(provider: .apple, idToken: tokenString)
         )
         let name = [credential.fullName?.givenName, credential.fullName?.familyName]
             .compactMap { $0 }.joined(separator: " ")

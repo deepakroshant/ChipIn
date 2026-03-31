@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"rm /Users/deepak/Claude-projects/Splitwise/.git/index.lock && git -C /Users/deepak/Claude-projects/Splitwise add -A && git -C /Users/deepak/Claude-projects/Splitwise commit -m \\\"$(cat <<'E...",
+  "error": "Exit code 1\nrm: /Users/deepak/Claude-projects/Splitwise/.git/index.lock: No such file or directory",
+  "timestamp": "2026-03-31T09:21:16.731Z",
+  "retry_count": 2
+}

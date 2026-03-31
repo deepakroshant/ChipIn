@@ -334,6 +334,18 @@
       "accessCount": 1,
       "lastAccessed": 1774919631679,
       "type": "file"
+    },
+    {
+      "path": "add_files.rb",
+      "accessCount": 1,
+      "lastAccessed": 1774948658991,
+      "type": "file"
+    },
+    {
+      "path": "ChipIn/ChipIn/Core/SupabaseClient.swift",
+      "accessCount": 1,
+      "lastAccessed": 1774948809872,
+      "type": "file"
     }
   ],
   "userDirectives": []

@@ -20,9 +20,14 @@ class NotificationManager {
 
     func handleAPNSToken(_ deviceToken: Data) async {
         let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
-        try? await supabase.auth.updateUser(
-            attributes: UserAttributes(data: ["apns_token": AnyJSON.string(tokenString)])
-        )
+        // Store token in users table for server-side push notifications
+        if let userId = try? await supabase.auth.session.user.id {
+            try? await supabase
+                .from("users")
+                .update(["apns_token": tokenString])
+                .eq("id", value: userId.uuidString)
+                .execute()
+        }
     }
 
     func scheduleLocalReminder(title: String, body: String, after seconds: TimeInterval) {
