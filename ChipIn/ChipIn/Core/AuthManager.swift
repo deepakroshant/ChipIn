@@ -60,7 +60,7 @@ class AuthManager {
         }
     }
 
-    /// Creates or updates `public.users` when missing (required for RLS and FKs).
+    /// Ensures `public.users` row exists — trigger handles insert, this just updates metadata.
     private func ensureUserProfile(for user: User) async throws {
         let email: String = {
             if let e = user.email, !e.isEmpty { return e }
@@ -69,22 +69,15 @@ class AuthManager {
         }()
 
         var name = "User"
-        if user.isAnonymous {
-            name = "Guest"
-        }
-        if let full = user.userMetadata["full_name"], case .string(let s) = full, !s.isEmpty {
-            name = s
-        }
+        if user.isAnonymous { name = "Guest" }
+        if let full = user.userMetadata["full_name"], case .string(let s) = full, !s.isEmpty { name = s }
 
-        struct UserRow: Encodable {
-            let id: String
-            let name: String
-            let email: String
-        }
+        struct UserRow: Encodable { let id: String; let name: String; let email: String }
 
-        try await supabase
+        // Try upsert; if trigger already created row this is a no-op conflict.
+        _ = try? await supabase
             .from("users")
-            .upsert(UserRow(id: user.id.uuidString, name: name, email: email))
+            .upsert(UserRow(id: user.id.uuidString, name: name, email: email), onConflict: "id")
             .execute()
     }
 
@@ -123,12 +116,20 @@ class AuthManager {
 
     func signUpWithEmail(email: String, password: String, name: String) async throws {
         lastError = nil
-        let session = try await supabase.auth.signUp(email: email, password: password)
-        struct UserRow: Encodable { let id: String; let name: String; let email: String }
-        try await supabase
-            .from("users")
-            .upsert(UserRow(id: session.user.id.uuidString, name: name.isEmpty ? "User" : name, email: email))
-            .execute()
+        let session = try await supabase.auth.signUp(
+            email: email,
+            password: password,
+            data: ["full_name": AnyJSON.string(name.isEmpty ? "User" : name)]
+        )
+        // Trigger handle_new_user creates public.users row automatically.
+        // Update name in case trigger ran before metadata propagated.
+        if !name.isEmpty {
+            _ = try? await supabase
+                .from("users")
+                .update(["name": name])
+                .eq("id", value: session.user.id.uuidString)
+                .execute()
+        }
         await loadUser(id: session.user.id)
     }
 
