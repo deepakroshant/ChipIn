@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var hideBalances = UserDefaults.standard.bool(forKey: "hideBalances")
     @State private var selectedAccent = UserDefaults.standard.string(forKey: "accentColor") ?? "#F97316"
     @State private var interacContact = ""
+    @State private var username = ""
     @State private var isSavingInterac = false
 
     private let accents = ["#F97316", "#3B82F6", "#10B981", "#8B5CF6", "#EC4899"]
@@ -30,11 +31,35 @@ struct ProfileView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(auth.currentUser?.name ?? "")
                                 .font(.headline).foregroundStyle(ChipInTheme.label)
+                            if let u = auth.currentUser?.username, !u.isEmpty {
+                                Text("@\(u)")
+                                    .font(.caption).fontWeight(.medium)
+                                    .foregroundStyle(ChipInTheme.accent)
+                            }
                             Text(auth.currentUser?.email ?? "")
                                 .font(.caption).foregroundStyle(ChipInTheme.secondaryLabel)
                         }
                     }
                     .listRowBackground(ChipInTheme.card)
+                }
+
+                // Username
+                Section {
+                    HStack {
+                        Label("Username", systemImage: "at")
+                            .foregroundStyle(ChipInTheme.secondaryLabel)
+                        TextField("yourname", text: $username)
+                            .foregroundStyle(ChipInTheme.label)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .onSubmit { saveUsername() }
+                    }
+                    .listRowBackground(ChipInTheme.card)
+                } header: {
+                    Text("Username")
+                } footer: {
+                    Text("Friends can find you by @username")
                 }
 
                 // Interac e-Transfer
@@ -157,7 +182,21 @@ struct ProfileView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .onAppear {
                 interacContact = auth.currentUser?.interacContact ?? ""
+                username = auth.currentUser?.username ?? ""
             }
+        }
+    }
+
+    private func saveUsername() {
+        guard let id = auth.currentUser?.id else { return }
+        let clean = username.lowercased().replacingOccurrences(of: "@", with: "")
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" }
+        Task {
+            _ = try? await supabase
+                .from("users")
+                .update(["username": clean])
+                .eq("id", value: id)
+                .execute()
         }
     }
 
