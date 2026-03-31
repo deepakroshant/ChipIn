@@ -1,5 +1,6 @@
 import SwiftUI
 import Supabase
+import PostgREST
 
 struct ProfileView: View {
     @Environment(AuthManager.self) var auth

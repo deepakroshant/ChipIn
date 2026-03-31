@@ -1,3 +1,4 @@
+import Supabase
 import Foundation
 
 struct GroupService {
