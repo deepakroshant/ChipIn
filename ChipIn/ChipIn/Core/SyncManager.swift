@@ -8,37 +8,16 @@ class SyncManager {
     private var channel: RealtimeChannelV2?
 
     func startListening(onUpdate: @escaping () async -> Void) async {
-        let ch = await supabase.channel("app-updates")
+        let ch = supabase.channel("app-updates")
 
-        await ch.on(
-            .postgresChanges,
-            filter: PostgresJoinConfig(event: .all, schema: "public", table: "expenses")
-        ) { _ in
-            Task { await onUpdate() }
+        let tables = ["expenses", "expense_splits", "settlements", "comments"]
+        for table in tables {
+            ch.onPostgresChange(AnyAction.self, schema: "public", table: table) { _ in
+                Task { await onUpdate() }
+            }
         }
 
-        await ch.on(
-            .postgresChanges,
-            filter: PostgresJoinConfig(event: .all, schema: "public", table: "expense_splits")
-        ) { _ in
-            Task { await onUpdate() }
-        }
-
-        await ch.on(
-            .postgresChanges,
-            filter: PostgresJoinConfig(event: .all, schema: "public", table: "settlements")
-        ) { _ in
-            Task { await onUpdate() }
-        }
-
-        await ch.on(
-            .postgresChanges,
-            filter: PostgresJoinConfig(event: .all, schema: "public", table: "comments")
-        ) { _ in
-            Task { await onUpdate() }
-        }
-
-        await ch.subscribe()
+        try? await ch.subscribeWithError()
         channel = ch
         isConnected = true
     }

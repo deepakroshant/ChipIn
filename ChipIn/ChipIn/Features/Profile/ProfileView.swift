@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 struct ProfileView: View {
     @Environment(AuthManager.self) var auth
