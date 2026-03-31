@@ -1,0 +1,8 @@
+*.xcuserstate
+*.xcuserdatad/
+DerivedData/
+.build/
+*.ipa
+*.dSYM.zip
+.env
+Secrets.swift
