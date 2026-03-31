@@ -1,4 +1,5 @@
 import Supabase
+import PostgREST
 import Foundation
 
 struct GroupService {

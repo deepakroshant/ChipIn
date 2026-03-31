@@ -1,5 +1,7 @@
 import SwiftUI
 import Supabase
+import PostgREST
+import Auth
 import AuthenticationServices
 
 @MainActor

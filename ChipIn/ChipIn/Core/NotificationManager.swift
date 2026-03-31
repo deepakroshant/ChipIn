@@ -1,6 +1,8 @@
 import UserNotifications
 import UIKit
 import Supabase
+import Auth
+import PostgREST
 
 @MainActor
 class NotificationManager {

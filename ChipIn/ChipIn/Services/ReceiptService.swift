@@ -1,4 +1,5 @@
 import Supabase
+import Functions
 import Foundation
 import UIKit
 

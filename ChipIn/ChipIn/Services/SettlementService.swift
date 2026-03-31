@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Supabase
+import PostgREST
 
 struct SettlementService {
     func settle(fromUserId: UUID, toUserId: UUID, amount: Decimal, groupId: UUID?, method: String) async throws {

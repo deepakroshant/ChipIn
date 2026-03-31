@@ -1,7 +1,0 @@
-{
-  "tool_name": "WebFetch",
-  "tool_input_preview": "{\"url\":\"https://github.com/supabase/supabase-swift/blob/2.43.0/Sources/Realtime/RealtimeChannelV2.swift\",\"prompt\":\"Show all public method signatures on RealtimeChannelV2: onPostgresChange overloads, s...",
-  "error": "Request failed with status code 404",
-  "timestamp": "2026-03-31T09:24:06.355Z",
-  "retry_count": 2
-}

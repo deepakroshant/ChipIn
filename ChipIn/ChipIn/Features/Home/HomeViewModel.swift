@@ -1,5 +1,7 @@
 import SwiftUI
 import WidgetKit
+import Supabase
+import PostgREST
 
 @MainActor
 @Observable

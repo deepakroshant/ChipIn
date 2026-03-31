@@ -186,6 +186,12 @@
       "type": "file"
     },
     {
+      "path": "ChipInWidget/ChipInWidget.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774949336736,
+      "type": "file"
+    },
+    {
       "path": "supabase/migrations/001_initial_schema.sql",
       "accessCount": 1,
       "lastAccessed": 1774919334469,
@@ -315,12 +321,6 @@
       "path": "ChipIn/Features/Insights/InsightsViewModel.swift",
       "accessCount": 1,
       "lastAccessed": 1774919543668,
-      "type": "file"
-    },
-    {
-      "path": "ChipInWidget/ChipInWidget.swift",
-      "accessCount": 1,
-      "lastAccessed": 1774919601596,
       "type": "file"
     },
     {
