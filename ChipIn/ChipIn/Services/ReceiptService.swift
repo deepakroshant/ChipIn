@@ -27,12 +27,12 @@ struct ReceiptService {
             let imageBase64: String
         }
 
-        let response = try await supabase.functions.invoke(
+        let data: Data = try await supabase.functions.invoke(
             "parse-receipt",
             options: .init(body: ParseReceiptBody(imageBase64: base64))
         )
 
-        let result = try JSONDecoder().decode(ReceiptAPIResponse.self, from: response.data)
+        let result = try JSONDecoder().decode(ReceiptAPIResponse.self, from: data)
 
         let taxRate = result.subtotal > 0 ? Decimal(result.tax) / Decimal(result.subtotal) : 0
         let items = result.items.map { item -> ParsedReceipt.Item in
