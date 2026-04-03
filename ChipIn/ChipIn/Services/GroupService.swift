@@ -7,6 +7,18 @@ private struct FindUserEmailParams: Sendable {
     let lookup_email: String
 }
 
+private struct SearchUsersParams: Sendable {
+    let query: String
+}
+
+extension SearchUsersParams: Encodable {
+    nonisolated func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(query, forKey: .query)
+    }
+    private enum CodingKeys: String, CodingKey { case query }
+}
+
 extension FindUserEmailParams: Encodable {
     nonisolated func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -103,11 +115,8 @@ struct GroupService {
     func searchUsers(_ query: String) async throws -> [AppUser] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return [] }
-        struct Params: Encodable {
-            let query: String
-        }
         let rows: [AppUser] = try await supabase
-            .rpc("search_users", params: Params(query: trimmed))
+            .rpc("search_users", params: SearchUsersParams(query: trimmed))
             .execute()
             .value
         return rows

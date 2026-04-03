@@ -105,6 +105,27 @@ struct ExpenseService {
             .execute()
     }
 
+    /// Convert assigned receipt items into per-user splits.
+    /// Unassigned items are spread evenly across all participants.
+    func calculateItemSplits(receipt: ParsedReceipt, participantIds: [UUID]) -> [(userId: UUID, amount: Decimal)] {
+        guard !participantIds.isEmpty else { return [] }
+        var totals: [UUID: Decimal] = Dictionary(uniqueKeysWithValues: participantIds.map { ($0, Decimal(0)) })
+        var unassignedTotal: Decimal = 0
+        for item in receipt.items {
+            let full = item.price + item.taxPortion
+            if let owner = item.assignedTo, totals[owner] != nil {
+                totals[owner]! += full
+            } else {
+                unassignedTotal += full
+            }
+        }
+        if unassignedTotal > 0 {
+            let share = unassignedTotal / Decimal(participantIds.count)
+            for id in participantIds { totals[id]! += share }
+        }
+        return participantIds.map { id in (userId: id, amount: totals[id] ?? 0) }
+    }
+
     func calculateEqualSplits(amount: Decimal, userIds: [UUID]) -> [(userId: UUID, amount: Decimal)] {
         guard !userIds.isEmpty else { return [] }
         let count = Decimal(userIds.count)

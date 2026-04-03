@@ -11,6 +11,7 @@ struct AddExpenseView: View {
     @State private var searchResults: [AppUser] = []
     @State private var isSearching = false
     @State private var searchError: String?
+    @State private var showItemSplit = false
     @FocusState private var amountFocused: Bool
     @FocusState private var searchFocused: Bool
     private let service = GroupService()
@@ -28,13 +29,7 @@ struct AddExpenseView: View {
                         splitTypeSection
                         receiptSection
                         recurringSection
-                        if let error = vm.error {
-                            Text(error)
-                                .font(.subheadline)
-                                .foregroundStyle(ChipInTheme.danger)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 4)
-                        }
+                        errorBanner
                     }
                     .padding()
                     .padding(.bottom, 40)
@@ -82,6 +77,41 @@ struct AddExpenseView: View {
             .sheet(isPresented: $vm.showReceiptScanner) {
                 ReceiptScannerView(parsedReceipt: $vm.parsedReceipt)
             }
+            .onChange(of: vm.parsedReceipt) { _, receipt in
+                guard receipt != nil else { return }
+                if vm.amount.isEmpty || vm.amount == "0.00" {
+                    vm.amount = "\(vm.parsedReceipt?.total ?? 0)"
+                }
+                if vm.title.isEmpty { vm.title = "Receipt" }
+                showItemSplit = true
+            }
+            .sheet(isPresented: $showItemSplit) {
+                itemSplitSheet
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var itemSplitSheet: some View {
+        let members = vm.context == .group ? groupMembers : coMembers
+        let empty = ParsedReceipt(items: [], subtotal: 0, tax: 0, tip: 0, total: 0)
+        ItemSplitView(
+            receipt: Binding(
+                get: { vm.parsedReceipt ?? empty },
+                set: { vm.parsedReceipt = $0 }
+            ),
+            groupMembers: members
+        )
+    }
+
+    @ViewBuilder
+    private var errorBanner: some View {
+        if let error = vm.error {
+            Text(error)
+                .font(.subheadline)
+                .foregroundStyle(ChipInTheme.danger)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
         }
     }
 

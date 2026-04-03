@@ -3,8 +3,8 @@ import Functions
 import Foundation
 import UIKit
 
-struct ParsedReceipt {
-    struct Item {
+struct ParsedReceipt: Equatable {
+    struct Item: Equatable {
         var name: String
         var price: Decimal
         var taxPortion: Decimal = 0

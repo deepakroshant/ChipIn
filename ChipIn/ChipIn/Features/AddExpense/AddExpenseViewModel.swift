@@ -68,7 +68,7 @@ class AddExpenseViewModel {
 
         if context == .friends {
             guard selectedUserIds.count >= 2 else {
-                error = "Pick at least two people. Add a friend by email, or join a shared group first."
+                error = "Pick at least two people."
                 return false
             }
             guard selectedUserIds.contains(paidBy) else {
@@ -76,20 +76,26 @@ class AddExpenseViewModel {
                 return false
             }
         } else {
-            guard selectedGroupId != nil else {
-                error = "Choose a group."
-                return false
-            }
-            guard !selectedUserIds.isEmpty else {
-                error = "Select who is in this split."
-                return false
-            }
+            guard selectedGroupId != nil else { error = "Choose a group."; return false }
+            guard !selectedUserIds.isEmpty else { error = "Select who is in this split."; return false }
         }
 
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            let splits = service.calculateEqualSplits(amount: amountDecimal, userIds: selectedUserIds)
+            let splits: [(userId: UUID, amount: Decimal)]
+            var expenseItems: [NewExpenseItem] = []
+
+            if let receipt = parsedReceipt {
+                splits = service.calculateItemSplits(receipt: receipt, participantIds: selectedUserIds)
+                expenseItems = receipt.items.compactMap { item in
+                    guard let owner = item.assignedTo else { return nil }
+                    return NewExpenseItem(name: item.name, price: item.price, taxPortion: item.taxPortion, assignedTo: owner)
+                }
+            } else {
+                splits = service.calculateEqualSplits(amount: amountDecimal, userIds: selectedUserIds)
+            }
+
             let gid: UUID? = context == .friends ? nil : selectedGroupId
             try await service.createExpense(
                 groupId: gid,
@@ -98,10 +104,11 @@ class AddExpenseViewModel {
                 amount: amountDecimal,
                 currency: currency,
                 category: category.rawValue,
-                splitType: splitType,
+                splitType: parsedReceipt != nil ? .byItem : splitType,
                 splits: splits,
                 isRecurring: isRecurring,
-                recurrenceInterval: isRecurring ? recurrenceInterval : nil
+                recurrenceInterval: isRecurring ? recurrenceInterval : nil,
+                items: expenseItems
             )
             SoundService.shared.play(.expenseAdd, haptic: .light)
             NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
