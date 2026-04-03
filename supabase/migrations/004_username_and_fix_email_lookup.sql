@@ -13,6 +13,7 @@ update public.users
 -- 2. Fix find_user_by_email — return all columns so Swift
 --    AppUser can decode without missing fields
 -- ============================================================
+drop function if exists public.find_user_by_email(text);
 create or replace function public.find_user_by_email(lookup_email text)
 returns table(
   id uuid, name text, email text, username text,
