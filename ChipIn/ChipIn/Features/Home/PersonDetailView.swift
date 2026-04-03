@@ -29,8 +29,8 @@ struct PersonDetailView: View {
                             showSettleUp = true
                         } label: {
                             HStack {
-                                Image(systemName: "checkmark.seal.fill")
-                                Text(theyOweMe ? "Request \(amountOwed, format: .currency(code: "CAD"))" : "Pay \(amountOwed, format: .currency(code: "CAD"))")
+                                Image(systemName: theyOweMe ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
+                                Text(theyOweMe ? "Request via Interac" : "Pay via Interac")
                                     .fontWeight(.semibold)
                             }
                             .frame(maxWidth: .infinity)
@@ -92,21 +92,25 @@ struct PersonDetailView: View {
         .sheet(isPresented: $showSettleUp) {
             if let currentUser = auth.currentUser {
                 if theyOweMe {
-                    // They owe me — show from their perspective (they pay me)
+                    // They owe me — I'm requesting, they pay
                     SettleUpView(
                         fromUserId: balance.user.id,
                         toUser: currentUser,
                         amount: amountOwed,
-                        groupId: nil
+                        groupId: nil,
+                        isPayment: false
                     )
+                    .environment(auth)
                 } else {
-                    // I owe them
+                    // I owe them — I'm paying
                     SettleUpView(
                         fromUserId: currentUser.id,
                         toUser: balance.user,
                         amount: amountOwed,
-                        groupId: nil
+                        groupId: nil,
+                        isPayment: true
                     )
+                    .environment(auth)
                 }
             }
         }

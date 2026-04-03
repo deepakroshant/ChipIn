@@ -99,9 +99,16 @@ class HomeViewModel {
 
             overallNet = personBalances.reduce(0) { $0 + $1.net }
 
-            // Widget sync
+            // Widget sync — write richer data for the widget extension
             let defaults = UserDefaults(suiteName: "group.com.deepakroshant.chipin")
             defaults?.set(NSDecimalNumber(decimal: overallNet).doubleValue, forKey: "netBalance")
+            let widgetBalances = personBalances.prefix(3).map { pb -> [String: Any] in
+                [
+                    "name": pb.user.name,
+                    "net": NSDecimalNumber(decimal: pb.net).doubleValue
+                ]
+            }
+            defaults?.set(widgetBalances, forKey: "topBalances")
             WidgetCenter.shared.reloadAllTimelines()
 
         } catch {
