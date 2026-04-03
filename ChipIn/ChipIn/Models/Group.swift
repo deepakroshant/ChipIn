@@ -7,11 +7,13 @@ struct Group: Codable, Identifiable, Hashable {
     var colour: String
     let createdBy: UUID
     let createdAt: Date
+    var budget: Decimal?
 
     enum CodingKeys: String, CodingKey {
         case id, name, emoji, colour
         case createdBy = "created_by"
         case createdAt = "created_at"
+        case budget
     }
 }
 

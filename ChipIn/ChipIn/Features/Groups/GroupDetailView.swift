@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 struct GroupDetailView: View {
     let group: Group
@@ -11,6 +12,10 @@ struct GroupDetailView: View {
     @State private var isAddingMember = false
     private let service = GroupService()
     private let expenseService = ExpenseService()
+    @State private var inviteLink: String?
+    @State private var showShareSheet = false
+    @State private var isGeneratingLink = false
+    @State private var showBudget = false
 
     var body: some View {
         List {
@@ -103,10 +108,40 @@ struct GroupDetailView: View {
         .background(ChipInTheme.background)
         .navigationTitle("\(group.emoji) \(group.name)")
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await generateInviteLink() }
+                    } label: {
+                        if isGeneratingLink {
+                            ProgressView().tint(ChipInTheme.accent).scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "link.badge.plus")
+                                .foregroundStyle(ChipInTheme.accent)
+                        }
+                    }
+                    Button {
+                        showBudget = true
+                    } label: {
+                        Image(systemName: "chart.pie.fill")
+                            .foregroundStyle(ChipInTheme.accent)
+                    }
+                }
+            }
+        }
         .task { await loadAll() }
         .refreshable { await loadAll() }
         .sheet(isPresented: $showAddMember) {
             addMemberSheet
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let link = inviteLink {
+                ShareSheet(items: [link])
+            }
+        }
+        .sheet(isPresented: $showBudget) {
+            GroupBudgetView(group: group, totalSpent: expenses.reduce(0) { $0 + $1.totalAmount })
         }
     }
 
@@ -205,4 +240,31 @@ struct GroupDetailView: View {
         expenses.removeAll { $0.id == expense.id }
         NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
     }
+
+    private func generateInviteLink() async {
+        guard let userId = auth.currentUser?.id else { return }
+        isGeneratingLink = true
+        defer { isGeneratingLink = false }
+        struct Insert: Encodable { let group_id: String; let created_by: String }
+        struct Invite: Decodable { let id: String }
+        let invite: Invite? = try? await supabase
+            .from("group_invites")
+            .insert(Insert(group_id: group.id.uuidString, created_by: userId.uuidString))
+            .select()
+            .single()
+            .execute()
+            .value
+        if let id = invite?.id {
+            inviteLink = "chipin://join/\(id)"
+            showShareSheet = true
+        }
+    }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uvc: UIActivityViewController, context: Context) {}
 }
