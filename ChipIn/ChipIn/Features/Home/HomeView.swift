@@ -5,6 +5,7 @@ struct HomeView: View {
     @Environment(AuthManager.self) var auth
     @State private var vm = HomeViewModel()
     @State private var recentExpenses: [Expense] = []
+    @State private var showQuickAdd = false
 
     var body: some View {
         NavigationStack {
@@ -106,7 +107,19 @@ struct HomeView: View {
                 .padding(.bottom, 16)
             }
             .background(ChipInTheme.background)
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showQuickAdd = true
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    } label: {
+                        Image(systemName: "bolt.fill")
+                            .foregroundStyle(ChipInTheme.accent)
+                    }
+                }
+            }
+            .toolbarBackground(ChipInTheme.background, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .task {
                 if let id = auth.currentUser?.id {
                     await loadAll(userId: id)
@@ -116,6 +129,12 @@ struct HomeView: View {
                 if let id = auth.currentUser?.id {
                     await loadAll(userId: id)
                 }
+            }
+            .sheet(isPresented: $showQuickAdd) {
+                QuickAddView()
+                    .environment(auth)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
             .onReceive(NotificationCenter.default.publisher(for: .dataDidUpdate)) { _ in
                 Task {
@@ -176,24 +195,28 @@ struct HomeView: View {
     }
 
     private var emptyActivityPlaceholder: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "tray.fill")
-                .font(.system(size: 40))
-                .foregroundStyle(ChipInTheme.tertiaryLabel)
-            Text("No recent activity")
-                .font(.headline)
-                .foregroundStyle(ChipInTheme.label)
-            Text("Tap +, choose Friends, then add someone by ChipIn email or pick people you know. Group trips stay under Groups—you don't need a group to split with one person.")
-                .font(.subheadline)
-                .foregroundStyle(ChipInTheme.secondaryLabel)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
+        VStack(spacing: 20) {
+            ZStack {
+                Circle()
+                    .fill(ChipInTheme.accentGradient)
+                    .frame(width: 80, height: 80)
+                    .opacity(0.15)
+                Text("💸").font(.system(size: 40))
+            }
+            VStack(spacing: 6) {
+                Text("You're all clear!")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(ChipInTheme.label)
+                Text("Hit ⚡️ for a 3-tap split, or + for a full expense with groups and receipt scanning.")
+                    .font(.subheadline)
+                    .foregroundStyle(ChipInTheme.secondaryLabel)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
-        .padding(.horizontal)
+        .padding(32)
         .background(ChipInTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal)
     }
 }
