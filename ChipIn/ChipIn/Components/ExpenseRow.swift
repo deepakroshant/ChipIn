@@ -25,10 +25,17 @@ struct ExpenseRow: View {
 
                 Spacer()
 
-                Text(expense.cadAmount, format: .currency(code: "CAD"))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(ChipInTheme.accent)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(expense.cadAmount, format: .currency(code: "CAD"))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(ChipInTheme.accent)
+                    if expense.currency != "CAD" {
+                        Text("\(expense.currency) \(expense.totalAmount, format: .number.precision(.fractionLength(2)))")
+                            .font(.caption2)
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                    }
+                }
             }
             .padding(.vertical, 4)
         }

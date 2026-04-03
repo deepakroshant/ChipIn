@@ -1,6 +1,12 @@
 import SwiftUI
 
 struct AddExpenseView: View {
+    let prefill: Expense?
+
+    init(prefill: Expense? = nil) {
+        self.prefill = prefill
+    }
+
     @Environment(AuthManager.self) var auth
     @Environment(\.dismiss) var dismiss
     @State private var vm = AddExpenseViewModel()
@@ -71,7 +77,17 @@ struct AddExpenseView: View {
             }
             .toolbarBackground(ChipInTheme.card, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .task { await loadInitialData() }
+            .task {
+                await loadInitialData()
+                if let p = prefill {
+                    vm.title = p.title + " (copy)"
+                    vm.amount = "\(p.totalAmount)"
+                    vm.currency = p.currency
+                    if let cat = ExpenseCategory(rawValue: p.category) {
+                        vm.category = cat
+                    }
+                }
+            }
             .onChange(of: vm.context) { _, _ in Task { await reloadSplitPool() } }
             .onChange(of: vm.selectedGroupId) { _, _ in Task { await reloadSplitPool() } }
             .onChange(of: searchText) { _, newVal in

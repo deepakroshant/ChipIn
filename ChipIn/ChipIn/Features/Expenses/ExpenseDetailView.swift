@@ -11,6 +11,7 @@ struct ExpenseDetailView: View {
     @State private var isLoading = false
     @State private var showDeleteConfirm = false
     @State private var showEdit = false
+    @State private var showDuplicate = false
     @State private var editTitle = ""
     @State private var editAmount = ""
     @State private var editCategory = ExpenseCategory.other
@@ -132,6 +133,13 @@ struct ExpenseDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showDuplicate = true
+                } label: {
+                    Image(systemName: "doc.on.doc").foregroundStyle(ChipInTheme.secondaryLabel)
+                }
+            }
             if expense.paidBy == auth.currentUser?.id {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Edit") {
@@ -145,6 +153,10 @@ struct ExpenseDetailView: View {
             }
         }
         .sheet(isPresented: $showEdit) { editSheet }
+        .sheet(isPresented: $showDuplicate) {
+            AddExpenseView(prefill: expense)
+                .environment(auth)
+        }
         .task {
             await loadSplits()
             await loadComments()
