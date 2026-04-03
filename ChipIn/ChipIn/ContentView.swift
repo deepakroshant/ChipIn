@@ -17,13 +17,17 @@ struct ContentView: View {
                     .tabItem { Label("Groups", systemImage: "person.3.fill") }
                     .tag(1)
 
+                SearchView()
+                    .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                    .tag(2)
+
                 InsightsView()
                     .tabItem { Label("Insights", systemImage: "chart.bar.fill") }
-                    .tag(2)
+                    .tag(3)
 
                 ProfileView()
                     .tabItem { Label("Profile", systemImage: "person.fill") }
-                    .tag(3)
+                    .tag(4)
             }
             .tint(ChipInTheme.accent)
             .toolbarBackground(ChipInTheme.card, for: .tabBar)

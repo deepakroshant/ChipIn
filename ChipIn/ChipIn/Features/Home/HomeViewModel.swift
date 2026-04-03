@@ -14,6 +14,7 @@ struct PersonBalance: Identifiable {
 class HomeViewModel {
     var personBalances: [PersonBalance] = []
     var overallNet: Decimal = 0
+    var simplifiedTransactions: [SimplifiedTransaction] = []
     var isLoading = false
     var error: String?
 
@@ -93,8 +94,10 @@ class HomeViewModel {
                     guard let user = userMap[userId], net != 0 else { return nil }
                     return PersonBalance(id: userId, user: user, net: net)
                 }.sorted { abs($0.net) > abs($1.net) }
+                simplifiedTransactions = computeSimplified(balances: personBalances, userMap: userMap, myId: currentUserId)
             } else {
                 personBalances = []
+                simplifiedTransactions = []
             }
 
             overallNet = personBalances.reduce(0) { $0 + $1.net }
@@ -114,5 +117,38 @@ class HomeViewModel {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    struct SimplifiedTransaction {
+        let from: AppUser
+        let to: AppUser
+        let amount: Decimal
+    }
+
+    private func computeSimplified(balances: [PersonBalance], userMap: [UUID: AppUser], myId: UUID) -> [SimplifiedTransaction] {
+        var nets: [UUID: Decimal] = [:]
+        for pb in balances {
+            nets[pb.user.id, default: 0] += pb.net
+            nets[myId, default: 0] -= pb.net
+        }
+
+        var creditors = nets.filter { $0.value > 0 }.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }
+        var debtors = nets.filter { $0.value < 0 }.map { ($0.key, abs($0.value)) }.sorted { $0.1 > $1.1 }
+
+        var result: [SimplifiedTransaction] = []
+        var ci = 0; var di = 0
+        while ci < creditors.count && di < debtors.count {
+            let (cid, camt) = creditors[ci]
+            let (did, damt) = debtors[di]
+            let settled = min(camt, damt)
+            if let fromUser = userMap[did], let toUser = userMap[cid] {
+                result.append(SimplifiedTransaction(from: fromUser, to: toUser, amount: settled))
+            }
+            creditors[ci].1 -= settled
+            debtors[di].1 -= settled
+            if creditors[ci].1 == 0 { ci += 1 }
+            if debtors[di].1 == 0 { di += 1 }
+        }
+        return result.filter { $0.from.id == myId || $0.to.id == myId }
     }
 }

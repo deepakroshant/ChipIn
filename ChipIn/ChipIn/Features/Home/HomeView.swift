@@ -78,6 +78,44 @@ struct HomeView: View {
                             }
                         }
 
+                        // Simplified Payments section
+                        if !vm.simplifiedTransactions.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("Simplified Payments")
+                                        .font(.headline).foregroundStyle(ChipInTheme.label)
+                                    Image(systemName: "sparkles")
+                                        .foregroundStyle(ChipInTheme.accent)
+                                        .font(.caption)
+                                }
+                                .padding(.horizontal)
+
+                                VStack(spacing: 0) {
+                                    ForEach(Array(vm.simplifiedTransactions.enumerated()), id: \.offset) { idx, txn in
+                                        HStack(spacing: 12) {
+                                            Text(String(txn.from.name.prefix(1)).uppercased())
+                                                .font(.caption.bold()).foregroundStyle(.white)
+                                                .frame(width: 32, height: 32)
+                                                .background(ChipInTheme.avatarColor(for: txn.from.name))
+                                                .clipShape(Circle())
+                                            Text("\(txn.from.name) → \(txn.to.name)")
+                                                .font(.subheadline).foregroundStyle(ChipInTheme.label)
+                                            Spacer()
+                                            Text(txn.amount, format: .currency(code: "CAD"))
+                                                .font(.subheadline.bold()).foregroundStyle(ChipInTheme.accent)
+                                        }
+                                        .padding(.horizontal).padding(.vertical, 10)
+                                        if idx < vm.simplifiedTransactions.count - 1 {
+                                            Divider().padding(.leading, 56)
+                                        }
+                                    }
+                                }
+                                .background(ChipInTheme.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .padding(.horizontal)
+                            }
+                        }
+
                         // Recent Activity section
                         if !recentExpenses.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
