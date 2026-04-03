@@ -97,6 +97,20 @@ struct ExpenseService {
         }
     }
 
+    func updateExpense(id: UUID, title: String, amount: Decimal, currency: String, category: String) async throws {
+        struct Update: Encodable {
+            let title: String
+            let total_amount: String
+            let currency: String
+            let category: String
+        }
+        try await supabase
+            .from("expenses")
+            .update(Update(title: title, total_amount: "\(amount)", currency: currency, category: category))
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+
     func deleteExpense(id: UUID) async throws {
         try await supabase
             .from("expenses")

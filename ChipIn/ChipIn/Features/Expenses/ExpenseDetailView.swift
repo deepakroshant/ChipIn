@@ -10,6 +10,11 @@ struct ExpenseDetailView: View {
     @State private var splitUsers: [UUID: AppUser] = [:]
     @State private var isLoading = false
     @State private var showDeleteConfirm = false
+    @State private var showEdit = false
+    @State private var editTitle = ""
+    @State private var editAmount = ""
+    @State private var editCategory = ExpenseCategory.other
+    @State private var isSavingEdit = false
     @State private var comments: [Comment] = []
     @State private var commentUsers: [UUID: AppUser] = [:]
     @State private var newComment = ""
@@ -126,6 +131,20 @@ struct ExpenseDetailView: View {
         .navigationTitle("Expense")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+        .toolbar {
+            if expense.paidBy == auth.currentUser?.id {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Edit") {
+                        editTitle = expense.title
+                        editAmount = "\(expense.totalAmount)"
+                        editCategory = ExpenseCategory(rawValue: expense.category) ?? .other
+                        showEdit = true
+                    }
+                    .foregroundStyle(ChipInTheme.accent)
+                }
+            }
+        }
+        .sheet(isPresented: $showEdit) { editSheet }
         .task {
             await loadSplits()
             await loadComments()
@@ -141,6 +160,77 @@ struct ExpenseDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes the expense and all splits. Cannot be undone.")
+        }
+    }
+
+    private var editSheet: some View {
+        NavigationStack {
+            ZStack {
+                ChipInTheme.background.ignoresSafeArea()
+                VStack(spacing: 16) {
+                    TextField("Title", text: $editTitle)
+                        .foregroundStyle(ChipInTheme.label)
+                        .padding(16)
+                        .background(ChipInTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                    TextField("Amount", text: $editAmount)
+                        .keyboardType(.decimalPad)
+                        .foregroundStyle(ChipInTheme.label)
+                        .padding(16)
+                        .background(ChipInTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                    Picker("Category", selection: $editCategory) {
+                        ForEach(ExpenseCategory.allCases, id: \.self) { cat in
+                            Text("\(cat.emoji) \(cat.rawValue)").tag(cat)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(ChipInTheme.accent)
+                    .padding(16)
+                    .background(ChipInTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationTitle("Edit Expense")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showEdit = false }
+                        .foregroundStyle(ChipInTheme.secondaryLabel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSavingEdit {
+                        ProgressView().tint(ChipInTheme.accent)
+                    } else {
+                        Button("Save") {
+                            Task {
+                                isSavingEdit = true
+                                defer { isSavingEdit = false }
+                                guard let amt = Decimal(string: editAmount), amt > 0, !editTitle.isEmpty else { return }
+                                try? await service.updateExpense(
+                                    id: expense.id,
+                                    title: editTitle,
+                                    amount: amt,
+                                    currency: expense.currency,
+                                    category: editCategory.rawValue
+                                )
+                                NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
+                                showEdit = false
+                            }
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(ChipInTheme.accent)
+                    }
+                }
+            }
         }
     }
 
