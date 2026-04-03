@@ -48,16 +48,22 @@
   },
   "hotPaths": [
     {
+      "path": "",
+      "accessCount": 9,
+      "lastAccessed": 1774989176013,
+      "type": "directory"
+    },
+    {
+      "path": "ChipIn",
+      "accessCount": 8,
+      "lastAccessed": 1774986495104,
+      "type": "directory"
+    },
+    {
       "path": "ChipIn/Core/AuthManager.swift",
       "accessCount": 6,
       "lastAccessed": 1774919615659,
       "type": "file"
-    },
-    {
-      "path": "ChipIn",
-      "accessCount": 5,
-      "lastAccessed": 1774919551961,
-      "type": "directory"
     },
     {
       "path": "ChipIn/Core/Notifications.swift",
@@ -70,12 +76,6 @@
       "accessCount": 5,
       "lastAccessed": 1774919607188,
       "type": "file"
-    },
-    {
-      "path": "",
-      "accessCount": 5,
-      "lastAccessed": 1774919610625,
-      "type": "directory"
     },
     {
       "path": "ChipIn/Features/AddExpense/AddExpenseViewModel.swift",
@@ -138,6 +138,12 @@
       "type": "file"
     },
     {
+      "path": "supabase/migrations/001_initial_schema.sql",
+      "accessCount": 3,
+      "lastAccessed": 1774989180663,
+      "type": "file"
+    },
+    {
       "path": "ChipIn/Services/GroupService.swift",
       "accessCount": 2,
       "lastAccessed": 1774919443898,
@@ -192,15 +198,15 @@
       "type": "file"
     },
     {
-      "path": "supabase/migrations/001_initial_schema.sql",
-      "accessCount": 1,
-      "lastAccessed": 1774919334469,
+      "path": "ChipIn/ChipIn/Core/SupabaseClient.swift",
+      "accessCount": 2,
+      "lastAccessed": 1774988434210,
       "type": "file"
     },
     {
       "path": "supabase/edge-functions/parse-receipt/index.ts",
-      "accessCount": 1,
-      "lastAccessed": 1774919340010,
+      "accessCount": 2,
+      "lastAccessed": 1774989180273,
       "type": "file"
     },
     {
@@ -339,12 +345,6 @@
       "path": "add_files.rb",
       "accessCount": 1,
       "lastAccessed": 1774948658991,
-      "type": "file"
-    },
-    {
-      "path": "ChipIn/ChipIn/Core/SupabaseClient.swift",
-      "accessCount": 1,
-      "lastAccessed": 1774948809872,
       "type": "file"
     }
   ],

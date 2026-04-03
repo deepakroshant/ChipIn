@@ -18,6 +18,17 @@ extension FindUserEmailParams: Encodable {
     }
 }
 
+enum GroupError: LocalizedError {
+    case userNotFound
+    case alreadyMember
+    var errorDescription: String? {
+        switch self {
+        case .userNotFound: return "No ChipIn account found with that email."
+        case .alreadyMember: return "That person is already in this group."
+        }
+    }
+}
+
 struct GroupService {
     func fetchGroups(for userId: UUID) async throws -> [Group] {
         let memberRows: [GroupMember] = try await supabase
@@ -98,6 +109,38 @@ struct GroupService {
             .execute()
             .value
         return rows.first
+    }
+
+    func addMember(groupId: UUID, email: String) async throws -> AppUser {
+        guard let user = try await findUserByEmail(email) else {
+            throw GroupError.userNotFound
+        }
+        let existing: [GroupMember] = try await supabase
+            .from("group_members")
+            .select()
+            .eq("group_id", value: groupId.uuidString)
+            .eq("user_id", value: user.id.uuidString)
+            .execute()
+            .value
+        if !existing.isEmpty { throw GroupError.alreadyMember }
+        try await supabase
+            .from("group_members")
+            .insert(["group_id": groupId.uuidString, "user_id": user.id.uuidString, "role": "member"])
+            .execute()
+        return user
+    }
+
+    func removeMember(groupId: UUID, userId: UUID) async throws {
+        try await supabase
+            .from("group_members")
+            .delete()
+            .eq("group_id", value: groupId.uuidString)
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+    }
+
+    func leaveGroup(groupId: UUID, userId: UUID) async throws {
+        try await removeMember(groupId: groupId, userId: userId)
     }
 
     func fetchMembers(for groupId: UUID) async throws -> [AppUser] {

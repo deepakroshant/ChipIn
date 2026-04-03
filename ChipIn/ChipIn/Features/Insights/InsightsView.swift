@@ -9,9 +9,44 @@ struct InsightsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    if vm.isLoading && vm.categoryStats.isEmpty {
+                        ProgressView()
+                            .tint(ChipInTheme.accent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                    } else if let err = vm.error {
+                        VStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 32))
+                                .foregroundStyle(ChipInTheme.danger)
+                            Text(err)
+                                .font(.subheadline)
+                                .foregroundStyle(ChipInTheme.secondaryLabel)
+                                .multilineTextAlignment(.center)
+                            Button("Retry") {
+                                Task { if let id = auth.currentUser?.id { await vm.load(userId: id) } }
+                            }
+                            .foregroundStyle(ChipInTheme.accent)
+                        }
+                        .padding(32)
+                    } else if vm.categoryStats.isEmpty && vm.monthlyTotal == 0 {
+                        VStack(spacing: 12) {
+                            Image(systemName: "chart.pie")
+                                .font(.system(size: 44))
+                                .foregroundStyle(ChipInTheme.tertiaryLabel)
+                            Text("No spending data yet")
+                                .font(.headline).foregroundStyle(ChipInTheme.label)
+                            Text("Add expenses to see your insights")
+                                .font(.subheadline).foregroundStyle(ChipInTheme.secondaryLabel)
+                        }
+                        .frame(maxWidth: .infinity).padding(40)
+                    }
+
                     // Monthly total card
+                    if !vm.isLoading || vm.monthlyTotal > 0 {
                     StatCard(title: "Spent This Month", value: vm.monthlyTotal, color: ChipInTheme.accent)
                         .padding(.horizontal)
+                    }
 
                     // Category donut chart
                     if !vm.categoryStats.isEmpty {
@@ -96,6 +131,9 @@ struct InsightsView: View {
             .toolbarBackground(ChipInTheme.card, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .task {
+                if let id = auth.currentUser?.id { await vm.load(userId: id) }
+            }
+            .refreshable {
                 if let id = auth.currentUser?.id { await vm.load(userId: id) }
             }
             .onReceive(NotificationCenter.default.publisher(for: .dataDidUpdate)) { _ in

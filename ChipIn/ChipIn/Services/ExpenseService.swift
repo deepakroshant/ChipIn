@@ -97,6 +97,14 @@ struct ExpenseService {
         }
     }
 
+    func deleteExpense(id: UUID) async throws {
+        try await supabase
+            .from("expenses")
+            .delete()
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+
     func calculateEqualSplits(amount: Decimal, userIds: [UUID]) -> [(userId: UUID, amount: Decimal)] {
         guard !userIds.isEmpty else { return [] }
         let count = Decimal(userIds.count)

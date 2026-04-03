@@ -17,6 +17,7 @@ class InsightsViewModel {
     var monthlyTotal: Decimal = 0
     var settlements: [Settlement] = []
     var isLoading = false
+    var error: String?
 
     private let colours: [Color] = [
         ChipInTheme.accent, Color(hex: "#3B82F6"),
@@ -65,7 +66,7 @@ class InsightsViewModel {
                 .execute()
                 .value
         } catch {
-            print("InsightsViewModel error: \(error)")
+            self.error = error.localizedDescription
         }
     }
 }
