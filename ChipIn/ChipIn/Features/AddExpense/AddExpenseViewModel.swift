@@ -13,7 +13,6 @@ class AddExpenseViewModel {
     var currency = "CAD"
     var category = ExpenseCategory.food
     var splitType = SplitType.equal
-    /// Group expense vs personal/friends split.
     var context: AddExpenseContext = .friends
     var selectedGroupId: UUID?
     var selectedUserIds: [UUID] = []
@@ -24,14 +23,38 @@ class AddExpenseViewModel {
     var error: String?
     var showReceiptScanner = false
     var parsedReceipt: ParsedReceipt?
-    /// Look up another ChipIn user by email (must exist in Supabase `users`).
     var friendEmailLookup = ""
+
+    /// Who actually paid — nil means the current signed-in user.
+    var paidByOverride: UUID?
+
+    /// Per-person custom values: % for percent, $ for exact, share count for shares.
+    var customSplitValues: [UUID: String] = [:]
+
+    /// Optional tax amount added on top (distributed proportionally).
+    var taxAmount = ""
 
     private let service = ExpenseService()
 
-    var amountDecimal: Decimal {
-        Decimal(string: amount) ?? 0
+    var amountDecimal: Decimal { Decimal(string: amount) ?? 0 }
+    var taxDecimal: Decimal { Decimal(string: taxAmount) ?? 0 }
+    var totalWithTax: Decimal { amountDecimal + taxDecimal }
+
+    // MARK: - Computed summaries for validation UI
+
+    var percentTotal: Decimal {
+        selectedUserIds.reduce(0) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
     }
+
+    var exactTotal: Decimal {
+        selectedUserIds.reduce(0) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
+    }
+
+    var sharesTotal: Decimal {
+        selectedUserIds.reduce(0) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
+    }
+
+    // MARK: - Participant helpers
 
     func toggleSplitParticipant(_ id: UUID) {
         if selectedUserIds.count == 1, selectedUserIds.contains(id) { return }
@@ -42,7 +65,6 @@ class AddExpenseViewModel {
         }
     }
 
-    /// After loading friend suggestions, ensure you’re selected so user can add others.
     func ensurePayerSelected(_ paidBy: UUID) {
         if selectedUserIds.isEmpty {
             selectedUserIds = [paidBy]
@@ -53,26 +75,84 @@ class AddExpenseViewModel {
 
     func addUserFromEmailLookup(_ user: AppUser) {
         friendEmailLookup = ""
-        if selectedUserIds.contains(user.id) { return }
         if !selectedUserIds.contains(user.id) {
             selectedUserIds.append(user.id)
         }
     }
 
-    func submit(paidBy: UUID) async -> Bool {
+    // MARK: - Split calculation
+
+    struct SplitError: Error { let message: String }
+
+    private func buildSplits() -> Result<[(userId: UUID, amount: Decimal)], SplitError> {
+        let total = totalWithTax
+        guard total > 0 else { return .failure(SplitError(message: "Enter a valid amount.")) }
+        let ids = selectedUserIds
+        guard !ids.isEmpty else { return .failure(SplitError(message: "Select at least one person.")) }
+
+        switch splitType {
+        case .equal:
+            return .success(service.calculateEqualSplits(amount: total, userIds: ids))
+
+        case .percent:
+            let pctTotal = ids.reduce(Decimal(0)) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
+            if abs(pctTotal - 100) > 0.01 {
+                return .failure(SplitError(message: "Percentages must add up to 100% (currently \(pctTotal)%)."))
+            }
+            let splits = ids.map { id -> (userId: UUID, amount: Decimal) in
+                let pct = (Decimal(string: customSplitValues[id] ?? "") ?? 0) / 100
+                var share = total * pct
+                var rounded = Decimal()
+                NSDecimalRound(&rounded, &share, 2, .bankers)
+                return (id, rounded)
+            }
+            return .success(splits)
+
+        case .exact:
+            let enteredTotal = ids.reduce(Decimal(0)) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
+            if abs(enteredTotal - total) > 0.01 {
+                return .failure(SplitError(message: "Amounts must add up to \(total) (currently \(enteredTotal))."))
+            }
+            let splits = ids.map { id -> (userId: UUID, amount: Decimal) in
+                let val = Decimal(string: customSplitValues[id] ?? "") ?? 0
+                return (id, val)
+            }
+            return .success(splits)
+
+        case .shares:
+            let shareSum = ids.reduce(Decimal(0)) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
+            guard shareSum > 0 else { return .failure(SplitError(message: "Enter share counts for each person.")) }
+            let splits = ids.map { id -> (userId: UUID, amount: Decimal) in
+                let s = Decimal(string: customSplitValues[id] ?? "") ?? 0
+                var share = total * s / shareSum
+                var rounded = Decimal()
+                NSDecimalRound(&rounded, &share, 2, .bankers)
+                return (id, rounded)
+            }
+            return .success(splits)
+
+        case .byItem:
+            if let receipt = parsedReceipt {
+                return .success(service.calculateItemSplits(receipt: receipt, participantIds: ids))
+            }
+            return .success(service.calculateEqualSplits(amount: total, userIds: ids))
+        }
+    }
+
+    // MARK: - Submit
+
+    func submit(defaultPaidBy: UUID) async -> Bool {
         error = nil
         guard !title.isEmpty, amountDecimal > 0 else {
             error = "Add a title and a valid amount."
             return false
         }
 
+        let paidBy = paidByOverride ?? defaultPaidBy
+
         if context == .friends {
             guard selectedUserIds.count >= 2 else {
                 error = "Pick at least two people."
-                return false
-            }
-            guard selectedUserIds.contains(paidBy) else {
-                error = "Include yourself in the split (tap your name)."
                 return false
             }
         } else {
@@ -80,42 +160,42 @@ class AddExpenseViewModel {
             guard !selectedUserIds.isEmpty else { error = "Select who is in this split."; return false }
         }
 
-        isSubmitting = true
-        defer { isSubmitting = false }
-        do {
-            let splits: [(userId: UUID, amount: Decimal)]
-            var expenseItems: [NewExpenseItem] = []
-
-            if let receipt = parsedReceipt {
-                splits = service.calculateItemSplits(receipt: receipt, participantIds: selectedUserIds)
-                expenseItems = receipt.items.compactMap { item in
-                    guard let owner = item.assignedTo else { return nil }
-                    return NewExpenseItem(name: item.name, price: item.price, taxPortion: item.taxPortion, assignedTo: owner)
-                }
-            } else {
-                splits = service.calculateEqualSplits(amount: amountDecimal, userIds: selectedUserIds)
-            }
-
-            let gid: UUID? = context == .friends ? nil : selectedGroupId
-            try await service.createExpense(
-                groupId: gid,
-                paidBy: paidBy,
-                title: title,
-                amount: amountDecimal,
-                currency: currency,
-                category: category.rawValue,
-                splitType: parsedReceipt != nil ? .byItem : splitType,
-                splits: splits,
-                isRecurring: isRecurring,
-                recurrenceInterval: isRecurring ? recurrenceInterval : nil,
-                items: expenseItems
-            )
-            SoundService.shared.play(.expenseAdd, haptic: .light)
-            NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
-            return true
-        } catch {
-            self.error = error.localizedDescription
+        switch buildSplits() {
+        case .failure(let splitErr):
+            error = splitErr.message
             return false
+        case .success(let splits):
+            isSubmitting = true
+            defer { isSubmitting = false }
+            do {
+                var expenseItems: [NewExpenseItem] = []
+                if let receipt = parsedReceipt {
+                    expenseItems = receipt.items.compactMap { item in
+                        guard let owner = item.assignedTo else { return nil }
+                        return NewExpenseItem(name: item.name, price: item.price, taxPortion: item.taxPortion, assignedTo: owner)
+                    }
+                }
+                let gid: UUID? = context == .friends ? nil : selectedGroupId
+                try await service.createExpense(
+                    groupId: gid,
+                    paidBy: paidBy,
+                    title: title,
+                    amount: totalWithTax,
+                    currency: currency,
+                    category: category.rawValue,
+                    splitType: parsedReceipt != nil ? .byItem : splitType,
+                    splits: splits,
+                    isRecurring: isRecurring,
+                    recurrenceInterval: isRecurring ? recurrenceInterval : nil,
+                    items: expenseItems
+                )
+                SoundService.shared.play(.expenseAdd, haptic: .light)
+                NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
+                return true
+            } catch {
+                self.error = error.localizedDescription
+                return false
+            }
         }
     }
 }

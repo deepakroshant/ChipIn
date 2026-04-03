@@ -24,9 +24,12 @@ struct AddExpenseView: View {
                     VStack(spacing: 20) {
                         contextPicker
                         amountSection
+                        taxSection
                         detailsSection
                         splitWithSection
+                        paidBySection
                         splitTypeSection
+                        customSplitSection
                         receiptSection
                         recurringSection
                         errorBanner
@@ -48,7 +51,7 @@ struct AddExpenseView: View {
                     } else {
                         Button("Save") {
                             Task {
-                                if let id = auth.currentUser?.id, await vm.submit(paidBy: id) {
+                                if let id = auth.currentUser?.id, await vm.submit(defaultPaidBy: id) {
                                     dismiss()
                                 }
                             }
@@ -367,6 +370,196 @@ struct AddExpenseView: View {
                 .padding(12)
                 .background(ChipInTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    // MARK: - Tax
+
+    private var taxSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Tax (optional)")
+            HStack {
+                Image(systemName: "plus.circle")
+                    .foregroundStyle(ChipInTheme.tertiaryLabel)
+                TextField("0.00", text: $vm.taxAmount)
+                    .keyboardType(.decimalPad)
+                    .foregroundStyle(vm.taxAmount.isEmpty ? ChipInTheme.tertiaryLabel : ChipInTheme.label)
+                if !vm.taxAmount.isEmpty {
+                    Text("= \(vm.totalWithTax, format: .currency(code: vm.currency)) total")
+                        .font(.caption)
+                        .foregroundStyle(ChipInTheme.secondaryLabel)
+                }
+            }
+            .padding(14)
+            .background(ChipInTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    // MARK: - Paid by
+
+    @ViewBuilder
+    private var paidBySection: some View {
+        let list = vm.context == .friends ? coMembers : groupMembers
+        if list.count > 1 {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionTitle("Paid by")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(list) { user in
+                            let isSelected = (vm.paidByOverride ?? auth.currentUser?.id) == user.id
+                            let isYou = user.id == auth.currentUser?.id
+                            Button {
+                                vm.paidByOverride = user.id
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text(String(user.name.prefix(1)).uppercased())
+                                        .font(.caption.bold())
+                                        .frame(width: 26, height: 26)
+                                        .background(ChipInTheme.avatarColor(for: user.name).opacity(isSelected ? 1 : 0.3))
+                                        .foregroundStyle(.white)
+                                        .clipShape(Circle())
+                                    Text(isYou ? "You" : user.name.components(separatedBy: " ").first ?? user.name)
+                                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                                        .foregroundStyle(isSelected ? ChipInTheme.label : ChipInTheme.secondaryLabel)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(isSelected ? ChipInTheme.elevated : ChipInTheme.card)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule().stroke(isSelected ? ChipInTheme.accent : Color.clear, lineWidth: 1.5)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+            }
+        }
+    }
+
+    // MARK: - Custom split inputs
+
+    @ViewBuilder
+    private var customSplitSection: some View {
+        if vm.splitType != .equal && vm.splitType != .byItem && !vm.selectedUserIds.isEmpty {
+            let list = vm.context == .friends ? coMembers : groupMembers
+            let participants = list.filter { vm.selectedUserIds.contains($0.id) }
+            if !participants.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionTitle(splitSectionTitle)
+                    VStack(spacing: 0) {
+                        ForEach(participants) { user in
+                            customSplitRow(user: user)
+                            if user.id != participants.last?.id {
+                                Divider().background(ChipInTheme.elevated).padding(.leading, 14)
+                            }
+                        }
+                        // Summary row
+                        Divider().background(ChipInTheme.elevated)
+                        HStack {
+                            Text(splitSummaryLabel)
+                                .font(.caption)
+                                .foregroundStyle(splitSummaryOk ? ChipInTheme.success : ChipInTheme.danger)
+                            Spacer()
+                            Text(splitSummaryValue)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(splitSummaryOk ? ChipInTheme.success : ChipInTheme.danger)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                    }
+                    .background(ChipInTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func customSplitRow(user: AppUser) -> some View {
+        let isYou = user.id == auth.currentUser?.id
+        HStack(spacing: 12) {
+            avatarCircle(name: user.name, size: 36)
+            Text(isYou ? "You" : user.name.components(separatedBy: " ").first ?? user.name)
+                .font(.subheadline)
+                .foregroundStyle(ChipInTheme.label)
+            Spacer()
+            HStack(spacing: 4) {
+                Text(splitInputPrefix).foregroundStyle(ChipInTheme.tertiaryLabel).font(.subheadline)
+                TextField(splitInputPlaceholder, text: Binding(
+                    get: { vm.customSplitValues[user.id] ?? "" },
+                    set: { vm.customSplitValues[user.id] = $0 }
+                ))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 72)
+                .foregroundStyle(ChipInTheme.label)
+                Text(splitInputSuffix).foregroundStyle(ChipInTheme.tertiaryLabel).font(.subheadline)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+    }
+
+    private var splitSectionTitle: String {
+        switch vm.splitType {
+        case .percent: return "Percentages (must total 100%)"
+        case .exact:   return "Exact amounts (must total \(vm.currency) \(vm.totalWithTax))"
+        case .shares:  return "Shares (any ratio, e.g. 2 : 1)"
+        default:       return "Split breakdown"
+        }
+    }
+
+    private var splitInputPrefix: String {
+        switch vm.splitType {
+        case .exact: return "$"
+        default:     return ""
+        }
+    }
+    private var splitInputSuffix: String {
+        switch vm.splitType {
+        case .percent: return "%"
+        default:       return ""
+        }
+    }
+    private var splitInputPlaceholder: String {
+        switch vm.splitType {
+        case .percent: return "50"
+        case .exact:   return "0.00"
+        case .shares:  return "1"
+        default:       return ""
+        }
+    }
+
+    private var splitSummaryOk: Bool {
+        switch vm.splitType {
+        case .percent: return abs(vm.percentTotal - 100) <= 0.01
+        case .exact:   return abs(vm.exactTotal - vm.totalWithTax) <= 0.01
+        case .shares:  return vm.sharesTotal > 0
+        default:       return true
+        }
+    }
+    private var splitSummaryLabel: String {
+        switch vm.splitType {
+        case .percent: return splitSummaryOk ? "✓ Adds up to 100%" : "Must reach 100%"
+        case .exact:   return splitSummaryOk ? "✓ Balanced" : "Remaining"
+        case .shares:  return splitSummaryOk ? "✓ Ratio set" : "Enter at least one share"
+        default:       return ""
+        }
+    }
+    private var splitSummaryValue: String {
+        switch vm.splitType {
+        case .percent: return "\(vm.percentTotal)%"
+        case .exact:
+            let rem = vm.totalWithTax - vm.exactTotal
+            if splitSummaryOk { return "All good" }
+            return rem >= 0 ? "-\(rem)" : "+\(abs(rem))"
+        case .shares:  return "\(vm.sharesTotal) shares"
+        default:       return ""
         }
     }
 
