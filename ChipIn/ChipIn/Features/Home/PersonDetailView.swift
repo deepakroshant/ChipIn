@@ -8,6 +8,9 @@ struct PersonDetailView: View {
     @State private var expenses: [Expense] = []
     @State private var isLoading = false
     @State private var showSettleUp = false
+    @State private var nudgeSent = false
+    @State private var isNudging = false
+    private let nudgeService = NudgeService()
 
     private var amountOwed: Decimal { abs(balance.net) }
     private var theyOweMe: Bool { balance.net > 0 }
@@ -40,6 +43,36 @@ struct PersonDetailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
                         }
                         .padding(.horizontal)
+
+                        if theyOweMe {
+                            Button {
+                                Task {
+                                    isNudging = true
+                                    defer { isNudging = false }
+                                    let myName = auth.currentUser?.name ?? "Your friend"
+                                    try? await nudgeService.sendNudge(
+                                        toUserId: balance.user.id,
+                                        fromName: myName,
+                                        amount: amountOwed
+                                    )
+                                    nudgeSent = true
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { nudgeSent = false }
+                                }
+                            } label: {
+                                HStack {
+                                    if isNudging { ProgressView().tint(ChipInTheme.secondaryLabel) }
+                                    else { Image(systemName: nudgeSent ? "checkmark" : "bell.badge") }
+                                    Text(nudgeSent ? "Reminder sent!" : "Send a reminder")
+                                }
+                                .frame(maxWidth: .infinity).padding()
+                                .background(ChipInTheme.card)
+                                .foregroundStyle(nudgeSent ? ChipInTheme.success : ChipInTheme.secondaryLabel)
+                                .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+                            }
+                            .padding(.horizontal)
+                            .disabled(isNudging || nudgeSent)
+                        }
                     }
 
                     // Expense history
