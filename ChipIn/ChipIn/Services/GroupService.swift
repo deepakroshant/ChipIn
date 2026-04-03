@@ -100,6 +100,19 @@ struct GroupService {
         return users
     }
 
+    func searchUsers(_ query: String) async throws -> [AppUser] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else { return [] }
+        struct Params: Encodable {
+            let query: String
+        }
+        let rows: [AppUser] = try await supabase
+            .rpc("search_users", params: Params(query: trimmed))
+            .execute()
+            .value
+        return rows
+    }
+
     /// Resolve a registered user by email (requires `find_user_by_email` RPC in Supabase).
     func findUserByEmail(_ email: String) async throws -> AppUser? {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)

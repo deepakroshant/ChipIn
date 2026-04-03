@@ -7,8 +7,13 @@ struct AddExpenseView: View {
     @State private var groups: [Group] = []
     @State private var groupMembers: [AppUser] = []
     @State private var coMembers: [AppUser] = []
-    @State private var emailLookupError: String?
+    @State private var searchText = ""
+    @State private var searchResults: [AppUser] = []
+    @State private var isSearching = false
+    @State private var searchError: String?
     @FocusState private var amountFocused: Bool
+    @FocusState private var searchFocused: Bool
+    private let service = GroupService()
 
     var body: some View {
         NavigationStack {
@@ -32,6 +37,7 @@ struct AddExpenseView: View {
                         }
                     }
                     .padding()
+                    .padding(.bottom, 40)
                 }
             }
             .navigationTitle("Add Expense")
@@ -42,39 +48,44 @@ struct AddExpenseView: View {
                         .foregroundStyle(ChipInTheme.secondaryLabel)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        Task {
-                            if let id = auth.currentUser?.id, await vm.submit(paidBy: id) {
-                                dismiss()
+                    if vm.isSubmitting {
+                        ProgressView().tint(ChipInTheme.accent)
+                    } else {
+                        Button("Save") {
+                            Task {
+                                if let id = auth.currentUser?.id, await vm.submit(paidBy: id) {
+                                    dismiss()
+                                }
                             }
                         }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(ChipInTheme.accent)
                     }
-                    .disabled(vm.isSubmitting)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(ChipInTheme.accent)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") { amountFocused = false }
-                        .foregroundStyle(ChipInTheme.accent)
+                    Button("Done") {
+                        amountFocused = false
+                        searchFocused = false
+                    }
+                    .foregroundStyle(ChipInTheme.accent)
                 }
             }
             .toolbarBackground(ChipInTheme.card, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .task {
-                await loadInitialData()
-            }
-            .onChange(of: vm.context) { _, _ in
-                Task { await reloadSplitPool() }
-            }
-            .onChange(of: vm.selectedGroupId) { _, _ in
-                Task { await reloadSplitPool() }
+            .task { await loadInitialData() }
+            .onChange(of: vm.context) { _, _ in Task { await reloadSplitPool() } }
+            .onChange(of: vm.selectedGroupId) { _, _ in Task { await reloadSplitPool() } }
+            .onChange(of: searchText) { _, newVal in
+                Task { await performSearch(newVal) }
             }
             .sheet(isPresented: $vm.showReceiptScanner) {
                 ReceiptScannerView(parsedReceipt: $vm.parsedReceipt)
             }
         }
     }
+
+    // MARK: - Context picker
 
     private var contextPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -87,24 +98,22 @@ struct AddExpenseView: View {
                 }
             }
             .pickerStyle(.segmented)
-            Text(
-                vm.context == .friends
-                    ? "Split with specific people. Your running balance updates on Home. Group trips stay under the Groups tab."
-                    : "Expense belongs to one group; split among members you choose."
-            )
+            Text(vm.context == .friends
+                ? "Split with specific people. Balances update on Home."
+                : "Expense belongs to one group.")
             .font(.caption)
             .foregroundStyle(ChipInTheme.tertiaryLabel)
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
+
+    // MARK: - Amount
 
     private var amountSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Amount")
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Currency")
-                        .foregroundStyle(ChipInTheme.secondaryLabel)
+                    Text("Currency").foregroundStyle(ChipInTheme.secondaryLabel)
                     Spacer()
                     Picker("Currency", selection: $vm.currency) {
                         Text("CAD").tag("CAD")
@@ -115,20 +124,20 @@ struct AddExpenseView: View {
                     .pickerStyle(.menu)
                     .tint(ChipInTheme.accent)
                 }
-                HStack(alignment: .firstTextBaseline) {
-                    TextField("0.00", text: $vm.amount)
-                        .keyboardType(.decimalPad)
-                        .focused($amountFocused)
-                        .font(.largeTitle.weight(.bold))
-                        .foregroundStyle(ChipInTheme.accent)
-                    Spacer(minLength: 0)
-                }
+                TextField("0.00", text: $vm.amount)
+                    .keyboardType(.decimalPad)
+                    .focused($amountFocused)
+                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .foregroundStyle(vm.amount.isEmpty ? ChipInTheme.tertiaryLabel : ChipInTheme.accent)
             }
             .padding(16)
             .background(ChipInTheme.card)
             .clipShape(RoundedRectangle(cornerRadius: 16))
+            .onTapGesture { amountFocused = true }
         }
     }
+
+    // MARK: - Details
 
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -164,43 +173,107 @@ struct AddExpenseView: View {
         }
     }
 
+    // MARK: - Split with (main change: live search)
+
     private var splitWithSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Split with")
-            Text(
-                vm.context == .friends
-                    ? "Tap people below. Add someone by email if they already use ChipIn."
-                    : "Choose who is part of this split (group expense)."
-            )
-            .font(.caption)
-            .foregroundStyle(ChipInTheme.secondaryLabel)
-            .fixedSize(horizontal: false, vertical: true)
 
             if vm.context == .friends {
-                emailInviteRow
+                // Search box
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                        TextField("Name, @username or email", text: $searchText)
+                            .focused($searchFocused)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .foregroundStyle(ChipInTheme.label)
+                        if isSearching {
+                            ProgressView().tint(ChipInTheme.accent).scaleEffect(0.8)
+                        } else if !searchText.isEmpty {
+                            Button { searchText = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(ChipInTheme.tertiaryLabel)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(ChipInTheme.elevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // Search results dropdown
+                    if !searchResults.isEmpty && searchFocused {
+                        VStack(spacing: 0) {
+                            ForEach(searchResults) { user in
+                                let alreadyAdded = coMembers.contains(where: { $0.id == user.id })
+                                Button {
+                                    addPersonToSplit(user)
+                                    searchText = ""
+                                    searchFocused = false
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        avatarCircle(name: user.name, size: 36)
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(user.name)
+                                                .font(.subheadline.weight(.medium))
+                                                .foregroundStyle(ChipInTheme.label)
+                                            Text(user.handle)
+                                                .font(.caption)
+                                                .foregroundStyle(ChipInTheme.tertiaryLabel)
+                                        }
+                                        Spacer()
+                                        if alreadyAdded {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(ChipInTheme.success)
+                                        } else {
+                                            Image(systemName: "plus.circle")
+                                                .foregroundStyle(ChipInTheme.accent)
+                                        }
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                if user.id != searchResults.last?.id {
+                                    Divider().padding(.leading, 56)
+                                }
+                            }
+                        }
+                        .background(ChipInTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+
+                        if let err = searchError {
+                            Text(err).font(.caption).foregroundStyle(ChipInTheme.danger)
+                        }
+                    } else if searchText.count >= 2 && searchResults.isEmpty && !isSearching {
+                        Text("No ChipIn users found for \"\(searchText)\"")
+                            .font(.caption)
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                            .padding(.top, 6)
+                    }
+                }
             }
 
-            if vm.context == .friends && coMembers.isEmpty && auth.currentUser != nil {
-                Text("No one from your groups yet — add a friend’s account email below.")
-                    .font(.caption)
-                    .foregroundStyle(ChipInTheme.tertiaryLabel)
-                    .padding(.bottom, 4)
-            }
-
-            if splitParticipantList.isEmpty {
-                Text(vm.context == .group ? "Select a group first." : "Add people above.")
+            // Selected people list
+            let list = vm.context == .friends ? coMembers : groupMembers
+            if list.isEmpty && vm.context == .group {
+                Text("Select a group first.")
                     .font(.subheadline)
                     .foregroundStyle(ChipInTheme.secondaryLabel)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(ChipInTheme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
-            } else {
+            } else if !list.isEmpty {
                 VStack(spacing: 0) {
-                    ForEach(splitParticipantList) { user in
-                        splitRow(user: user)
-                        if user.id != splitParticipantList.last?.id {
-                            Divider().background(ChipInTheme.elevated)
+                    ForEach(list) { user in
+                        personRow(user: user)
+                        if user.id != list.last?.id {
+                            Divider().background(ChipInTheme.elevated).padding(.leading, 58)
                         }
                     }
                 }
@@ -210,68 +283,52 @@ struct AddExpenseView: View {
         }
     }
 
-    private var emailInviteRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                TextField("Friend’s email (ChipIn account)", text: $vm.friendEmailLookup)
-                    .textContentType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                    .foregroundStyle(ChipInTheme.label)
-                    .padding(12)
-                    .background(ChipInTheme.elevated)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                Button("Add") {
-                    Task { await lookupEmail() }
-                }
-                .fontWeight(.semibold)
-                .foregroundStyle(ChipInTheme.accent)
-                .disabled(vm.friendEmailLookup.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            if let err = emailLookupError {
-                Text(err).font(.caption).foregroundStyle(ChipInTheme.danger)
-            }
-        }
-        .padding(.bottom, 4)
-    }
-
-    private var splitParticipantList: [AppUser] {
-        vm.context == .friends ? coMembers : groupMembers
-    }
-
     @ViewBuilder
-    private func splitRow(user: AppUser) -> some View {
+    private func personRow(user: AppUser) -> some View {
+        let isSelected = vm.selectedUserIds.contains(user.id)
+        let isYou = user.id == auth.currentUser?.id
         Button {
             vm.toggleSplitParticipant(user.id)
         } label: {
             HStack(spacing: 12) {
-                Text(nameInitials(user.name))
-                    .font(.caption.weight(.bold))
-                    .frame(width: 36, height: 36)
-                    .background(ChipInTheme.elevated)
-                    .foregroundStyle(ChipInTheme.label)
-                    .clipShape(Circle())
+                avatarCircle(name: user.name, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(user.name)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(ChipInTheme.label)
-                    if user.id == auth.currentUser?.id {
-                        Text("You")
-                            .font(.caption2)
-                            .foregroundStyle(ChipInTheme.accent)
-                    }
+                    Text(isYou ? "You" : user.handle)
+                        .font(.caption)
+                        .foregroundStyle(isYou ? ChipInTheme.accent : ChipInTheme.tertiaryLabel)
                 }
                 Spacer()
-                Image(systemName: vm.selectedUserIds.contains(user.id) ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(
-                        vm.selectedUserIds.contains(user.id) ? ChipInTheme.accent : ChipInTheme.tertiaryLabel
-                    )
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(ChipInTheme.accent)
+                } else {
+                    Image(systemName: "circle")
+                        .font(.title3)
+                        .foregroundStyle(ChipInTheme.tertiaryLabel)
+                }
             }
-            .padding(14)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
+
+    @ViewBuilder
+    private func avatarCircle(name: String, size: CGFloat) -> some View {
+        Text(String(name.prefix(1)).uppercased())
+            .font(.system(size: size * 0.4, weight: .bold))
+            .frame(width: size, height: size)
+            .background(ChipInTheme.avatarColor(for: name).opacity(0.3))
+            .foregroundStyle(ChipInTheme.avatarColor(for: name))
+            .clipShape(Circle())
+    }
+
+    // MARK: - Split type
 
     private var splitTypeSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -283,12 +340,12 @@ struct AddExpenseView: View {
         }
     }
 
+    // MARK: - Receipt
+
     private var receiptSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Receipt")
-            Button {
-                vm.showReceiptScanner = true
-            } label: {
+            Button { vm.showReceiptScanner = true } label: {
                 Label("Scan Receipt", systemImage: "camera.fill")
                     .frame(maxWidth: .infinity)
                     .padding(16)
@@ -298,6 +355,8 @@ struct AddExpenseView: View {
             }
         }
     }
+
+    // MARK: - Recurring
 
     private var recurringSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -322,45 +381,62 @@ struct AddExpenseView: View {
         }
     }
 
+    // MARK: - Helpers
+
     private func sectionTitle(_ text: String) -> some View {
         Text(text)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(ChipInTheme.secondaryLabel)
     }
 
-    private func nameInitials(_ name: String) -> String {
-        let parts = name.split(separator: " ")
-        let letters = parts.prefix(2).compactMap { $0.first.map(String.init) }
-        return letters.isEmpty ? "?" : letters.joined().uppercased()
+    private func addPersonToSplit(_ user: AppUser) {
+        if !coMembers.contains(where: { $0.id == user.id }) {
+            coMembers.append(user)
+        }
+        if !vm.selectedUserIds.contains(user.id) {
+            vm.selectedUserIds.append(user.id)
+        }
+    }
+
+    private func performSearch(_ query: String) async {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 2 else {
+            searchResults = []
+            return
+        }
+        isSearching = true
+        searchError = nil
+        defer { isSearching = false }
+        do {
+            searchResults = try await service.searchUsers(trimmed)
+        } catch {
+            searchError = error.localizedDescription
+            searchResults = []
+        }
     }
 
     private func loadInitialData() async {
         guard let id = auth.currentUser?.id else { return }
-        groups = (try? await GroupService().fetchGroups(for: id)) ?? []
-        coMembers = (try? await GroupService().fetchCoMembers(excludingSelf: id)) ?? []
+        groups = (try? await service.fetchGroups(for: id)) ?? []
+        coMembers = (try? await service.fetchCoMembers(excludingSelf: id)) ?? []
         if let selfUser = auth.currentUser {
-            coMembers = mergeSelfUser(selfUser, into: coMembers)
+            if !coMembers.contains(where: { $0.id == selfUser.id }) {
+                coMembers.insert(selfUser, at: 0)
+            }
         }
         vm.ensurePayerSelected(id)
         await reloadSplitPool()
     }
 
-    private func mergeSelfUser(_ selfUser: AppUser, into users: [AppUser]) -> [AppUser] {
-        var out = users
-        if !out.contains(where: { $0.id == selfUser.id }) {
-            out.insert(selfUser, at: 0)
-        }
-        return out
-    }
-
     private func reloadSplitPool() async {
-        emailLookupError = nil
         guard let id = auth.currentUser?.id else { return }
         switch vm.context {
         case .friends:
-            coMembers = (try? await GroupService().fetchCoMembers(excludingSelf: id)) ?? []
+            coMembers = (try? await service.fetchCoMembers(excludingSelf: id)) ?? []
             if let selfUser = auth.currentUser {
-                coMembers = mergeSelfUser(selfUser, into: coMembers)
+                if !coMembers.contains(where: { $0.id == selfUser.id }) {
+                    coMembers.insert(selfUser, at: 0)
+                }
             }
             vm.ensurePayerSelected(id)
         case .group:
@@ -369,34 +445,9 @@ struct AddExpenseView: View {
                 vm.selectedUserIds = []
                 return
             }
-            do {
-                let users = try await GroupService().fetchMembers(for: gid)
-                groupMembers = users
-                vm.selectedUserIds = users.map(\.id)
-            } catch {
-                groupMembers = []
-                vm.selectedUserIds = []
-            }
-        }
-    }
-
-    private func lookupEmail() async {
-        emailLookupError = nil
-        do {
-            guard let found = try await GroupService().findUserByEmail(vm.friendEmailLookup) else {
-                emailLookupError = "No ChipIn account for that email. They must sign up first."
-                return
-            }
-            guard found.id != auth.currentUser?.id else {
-                emailLookupError = "That’s you — already included."
-                return
-            }
-            vm.addUserFromEmailLookup(found)
-            if !coMembers.contains(where: { $0.id == found.id }) {
-                coMembers.append(found)
-            }
-        } catch {
-            emailLookupError = error.localizedDescription
+            let users = (try? await service.fetchMembers(for: gid)) ?? []
+            groupMembers = users
+            vm.selectedUserIds = users.map(\.id)
         }
     }
 }
