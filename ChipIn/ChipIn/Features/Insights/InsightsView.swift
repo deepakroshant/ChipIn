@@ -4,6 +4,7 @@ import Charts
 struct InsightsView: View {
     @Environment(AuthManager.self) var auth
     @State private var vm = InsightsViewModel()
+    @State private var showExport = false
 
     var body: some View {
         NavigationStack {
@@ -141,6 +142,20 @@ struct InsightsView: View {
                     if let id = auth.currentUser?.id { await vm.load(userId: id) }
                 }
             }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showExport = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundStyle(ChipInTheme.accent)
+                    }
+                }
+            }
+            .sheet(isPresented: $showExport) {
+                ExportSheetView()
+                    .environment(auth)
+            }
         }
     }
 }
@@ -165,5 +180,68 @@ struct StatCard: View {
         .padding(16)
         .background(ChipInTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+struct ExportShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uvc: UIActivityViewController, context: Context) {}
+}
+
+struct ExportSheetView: View {
+    @Environment(AuthManager.self) var auth
+    @Environment(\.dismiss) var dismiss
+    @State private var isExporting = false
+    @State private var exportURL: URL?
+    private let service = ExportService()
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ChipInTheme.background.ignoresSafeArea()
+                VStack(spacing: 20) {
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(ChipInTheme.accent)
+                    Text("Export Expenses").font(.title2.bold()).foregroundStyle(ChipInTheme.label)
+                    Text("Exports all expenses you paid as a CSV file for accounting or reimbursement.")
+                        .font(.subheadline).foregroundStyle(ChipInTheme.secondaryLabel)
+                        .multilineTextAlignment(.center).padding(.horizontal)
+                    Button {
+                        Task { await export() }
+                    } label: {
+                        if isExporting { ProgressView().tint(.black) }
+                        else { Text("Export CSV").fontWeight(.semibold).foregroundStyle(.black) }
+                    }
+                    .frame(maxWidth: .infinity).padding()
+                    .background(ChipInTheme.accentGradient)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal)
+                    .disabled(isExporting)
+                    if let url = exportURL {
+                        ExportShareSheet(items: [url])
+                    }
+                }
+            }
+            .navigationTitle("Export").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }.foregroundStyle(ChipInTheme.secondaryLabel)
+            }}
+        }
+    }
+
+    private func export() async {
+        guard let userId = auth.currentUser?.id else { return }
+        isExporting = true
+        defer { isExporting = false }
+        let expenses: [Expense] = (try? await supabase
+            .from("expenses").select()
+            .eq("paid_by", value: userId)
+            .order("created_at", ascending: false)
+            .execute().value) ?? []
+        exportURL = service.generateCSV(expenses: expenses)
     }
 }
