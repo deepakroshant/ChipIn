@@ -52,7 +52,6 @@ struct ChipInProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WidgetEntry>) -> Void) {
         let entry = WidgetDataReader.read()
-        // Refresh every 15 minutes
         let nextRefresh = Calendar.current.date(byAdding: .minute, value: 15, to: .now)!
         completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
     }
@@ -113,7 +112,6 @@ struct ChipInWidgetEntryView: View {
         ZStack {
             Color(hex: "#0E0E10")
             HStack(spacing: 0) {
-                // Left: net balance
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 4) {
                         Image(systemName: "bolt.fill")
@@ -140,12 +138,10 @@ struct ChipInWidgetEntryView: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Divider
                 Rectangle()
                     .fill(.white.opacity(0.08))
                     .frame(width: 1)
 
-                // Right: top balances
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Balances")
                         .font(.caption2.uppercaseSmallCaps())
@@ -178,13 +174,12 @@ struct ChipInWidgetEntryView: View {
         .containerBackground(Color(hex: "#0E0E10"), for: .widget)
     }
 
-    // MARK: Large — balance + all top people + recent note
+    // MARK: Large — balance + all top people
 
     private var largeView: some View {
         ZStack {
             Color(hex: "#0E0E10")
             VStack(alignment: .leading, spacing: 16) {
-                // Header
                 HStack {
                     HStack(spacing: 4) {
                         Image(systemName: "bolt.fill")
@@ -204,7 +199,6 @@ struct ChipInWidgetEntryView: View {
 
                 Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
 
-                // Person balances
                 if entry.topBalances.isEmpty {
                     Text("All settled up! 🎉")
                         .font(.subheadline)
