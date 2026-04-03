@@ -10,7 +10,12 @@ struct ExpenseDetailView: View {
     @State private var splitUsers: [UUID: AppUser] = [:]
     @State private var isLoading = false
     @State private var showDeleteConfirm = false
+    @State private var comments: [Comment] = []
+    @State private var commentUsers: [UUID: AppUser] = [:]
+    @State private var newComment = ""
+    @State private var isPostingComment = false
     private let service = ExpenseService()
+    private let commentService = CommentService()
 
     private var categoryEmoji: String {
         ExpenseCategory(rawValue: expense.category)?.emoji ?? "📦"
@@ -96,6 +101,9 @@ struct ExpenseDetailView: View {
                     }
                 }
 
+                // Comments section
+                commentsSection
+
                 // Delete button — only for the payer
                 if expense.paidBy == auth.currentUser?.id {
                     Button {
@@ -118,7 +126,10 @@ struct ExpenseDetailView: View {
         .navigationTitle("Expense")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
-        .task { await loadSplits() }
+        .task {
+            await loadSplits()
+            await loadComments()
+        }
         .confirmationDialog("Delete this expense?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 Task {
@@ -131,6 +142,102 @@ struct ExpenseDetailView: View {
         } message: {
             Text("This removes the expense and all splits. Cannot be undone.")
         }
+    }
+
+    private var commentsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Comments")
+                .font(.footnote.uppercaseSmallCaps())
+                .foregroundStyle(ChipInTheme.tertiaryLabel)
+                .padding(.horizontal, ChipInTheme.padding)
+
+            if !comments.isEmpty {
+                LazyVStack(spacing: 0) {
+                    ForEach(comments) { comment in
+                        let name = commentUsers[comment.userId]?.name ?? "?"
+                        HStack(alignment: .top, spacing: 10) {
+                            Text(String(name.prefix(1)).uppercased())
+                                .font(.caption.bold())
+                                .foregroundStyle(ChipInTheme.label)
+                                .frame(width: 30, height: 30)
+                                .background(ChipInTheme.avatarColor(for: name).opacity(0.25))
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(name).font(.caption.weight(.semibold)).foregroundStyle(ChipInTheme.label)
+                                    Text(comment.createdAt, style: .relative)
+                                        .font(.caption2)
+                                        .foregroundStyle(ChipInTheme.tertiaryLabel)
+                                }
+                                Text(comment.body)
+                                    .font(.subheadline)
+                                    .foregroundStyle(ChipInTheme.secondaryLabel)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, ChipInTheme.padding)
+                        .padding(.vertical, 10)
+                        if comment.id != comments.last?.id {
+                            Divider().padding(.leading, 52)
+                        }
+                    }
+                }
+                .background(ChipInTheme.card)
+                .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius))
+                .padding(.horizontal, ChipInTheme.padding)
+            }
+
+            HStack(spacing: 10) {
+                TextField("Add a comment…", text: $newComment)
+                    .padding(10)
+                    .background(ChipInTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .foregroundStyle(ChipInTheme.label)
+                if isPostingComment {
+                    ProgressView().tint(ChipInTheme.accent)
+                } else {
+                    Button {
+                        Task { await postComment() }
+                    } label: {
+                        Image(systemName: "paperplane.fill")
+                            .foregroundStyle(
+                                newComment.trimmingCharacters(in: .whitespaces).isEmpty
+                                    ? ChipInTheme.tertiaryLabel : ChipInTheme.accent
+                            )
+                    }
+                    .disabled(newComment.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .padding(.horizontal, ChipInTheme.padding)
+        }
+    }
+
+    private func loadComments() async {
+        do {
+            comments = try await commentService.fetchComments(for: expense.id)
+            let ids = Set(comments.map(\.userId))
+            if !ids.isEmpty {
+                let users: [AppUser] = try await supabase
+                    .from("users").select()
+                    .in("id", values: ids.map(\.uuidString))
+                    .execute().value
+                commentUsers = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+            }
+        } catch { /* silent */ }
+    }
+
+    private func postComment() async {
+        let body = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty, let userId = auth.currentUser?.id else { return }
+        isPostingComment = true
+        defer { isPostingComment = false }
+        do {
+            let comment = try await commentService.addComment(expenseId: expense.id, userId: userId, body: body)
+            commentUsers[userId] = auth.currentUser
+            comments.append(comment)
+            newComment = ""
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } catch { /* silent */ }
     }
 
     private func loadSplits() async {
