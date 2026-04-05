@@ -30,6 +30,13 @@ struct AddExpenseView: View {
                 ChipInTheme.background.ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 20) {
+                        if let userId = auth.currentUser?.id, !vm.templates.isEmpty {
+                            TemplatePickerView(
+                                templates: vm.templates,
+                                onSelect: { vm.applyTemplate($0) },
+                                onDelete: { t in Task { await vm.deleteTemplate(t) } }
+                            )
+                        }
                         contextPicker
                         amountSection
                         detailsSection
@@ -55,8 +62,9 @@ struct AddExpenseView: View {
                     } else {
                         Button("Save") {
                             Task {
-                                if let id = auth.currentUser?.id, await vm.submit(defaultPaidBy: id) {
-                                    dismiss()
+                                guard let id = auth.currentUser?.id else { return }
+                                if await vm.submit(defaultPaidBy: id) {
+                                    vm.showSaveTemplatePrompt = true
                                 }
                             }
                         }
@@ -67,7 +75,24 @@ struct AddExpenseView: View {
             }
             .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .alert("Save as Template?", isPresented: $vm.showSaveTemplatePrompt) {
+                TextField("e.g. Tim Hortons Run", text: $vm.templateName)
+                Button("Save") {
+                    guard let id = auth.currentUser?.id, !vm.templateName.isEmpty else {
+                        dismiss()
+                        return
+                    }
+                    Task {
+                        await vm.saveCurrentAsTemplate(userId: id, name: vm.templateName)
+                        dismiss()
+                    }
+                }
+                Button("Skip", role: .cancel) { dismiss() }
+            } message: {
+                Text("Reuse this setup for quick expense entry next time.")
+            }
             .task {
+                if let id = auth.currentUser?.id { await vm.loadTemplates(userId: id) }
                 await loadInitialData()
                 if let p = prefill {
                     vm.title = p.title + " (copy)"

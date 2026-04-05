@@ -38,7 +38,12 @@ class AddExpenseViewModel {
     /// Tip amount (added on top, distributed proportionally).
     var tipAmount: Decimal = 0
 
+    var templates: [ExpenseTemplate] = []
+    var showSaveTemplatePrompt = false
+    var templateName = ""
+
     private let service = ExpenseService()
+    private let templateService = TemplateService()
 
     var amountDecimal: Decimal { Decimal(string: amount) ?? 0 }
     var taxDecimal: Decimal { Decimal(string: taxAmount) ?? 0 }
@@ -56,6 +61,35 @@ class AddExpenseViewModel {
 
     var sharesTotal: Decimal {
         selectedUserIds.reduce(0) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
+    }
+
+    // MARK: - Templates
+
+    func loadTemplates(userId: UUID) async {
+        templates = (try? await templateService.fetchTemplates(userId: userId)) ?? []
+    }
+
+    func applyTemplate(_ template: ExpenseTemplate) {
+        title = template.title
+        currency = template.currency
+        if let cat = ExpenseCategory(rawValue: template.category) {
+            category = cat
+        }
+    }
+
+    func saveCurrentAsTemplate(userId: UUID, name: String) async {
+        guard !title.isEmpty else { return }
+        try? await templateService.saveTemplate(
+            userId: userId, name: name, title: title,
+            category: category.rawValue, splitType: splitType.rawValue,
+            currency: currency
+        )
+        await loadTemplates(userId: userId)
+    }
+
+    func deleteTemplate(_ template: ExpenseTemplate) async {
+        try? await templateService.deleteTemplate(id: template.id)
+        templates.removeAll { $0.id == template.id }
     }
 
     // MARK: - Auto-category
