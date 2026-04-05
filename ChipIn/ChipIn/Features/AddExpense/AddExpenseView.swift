@@ -228,6 +228,9 @@ struct AddExpenseView: View {
                 TextField("What's this for?", text: $vm.title)
                     .foregroundStyle(ChipInTheme.label)
                     .padding(16)
+                    .onChange(of: vm.title) { _, newTitle in
+                        vm.autoDetectCategory(from: newTitle)
+                    }
                 Divider().background(ChipInTheme.elevated)
                 if vm.context == .group {
                     Picker("Group", selection: $vm.selectedGroupId) {
@@ -249,6 +252,20 @@ struct AddExpenseView: View {
                 .padding(16)
                 .tint(ChipInTheme.accent)
                 .foregroundStyle(ChipInTheme.label)
+                .onChange(of: vm.category) { _, _ in
+                    vm.wasAutoDetected = false
+                }
+                if vm.wasAutoDetected {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles").font(.caption2)
+                        Text("Auto-detected").font(.caption2)
+                    }
+                    .foregroundStyle(ChipInTheme.accent.opacity(0.8))
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .transition(.opacity.combined(with: .scale(0.9)))
+                    .animation(.easeInOut(duration: 0.2), value: vm.wasAutoDetected)
+                }
             }
             .background(ChipInTheme.card)
             .clipShape(RoundedRectangle(cornerRadius: 16))

@@ -22,6 +22,7 @@ class AddExpenseViewModel {
     var isSubmitting = false
     var error: String?
     var showReceiptScanner = false
+    var wasAutoDetected = false
     var parsedReceipt: ParsedReceipt?
     var friendEmailLookup = ""
 
@@ -52,6 +53,17 @@ class AddExpenseViewModel {
 
     var sharesTotal: Decimal {
         selectedUserIds.reduce(0) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
+    }
+
+    // MARK: - Auto-category
+
+    func autoDetectCategory(from title: String) {
+        if let detected = CategoryDetector.detect(from: title) {
+            category = detected
+            wasAutoDetected = true
+        } else {
+            wasAutoDetected = false
+        }
     }
 
     // MARK: - Participant helpers
@@ -89,6 +101,15 @@ class AddExpenseViewModel {
         guard total > 0 else { return .failure(SplitError(message: "Enter a valid amount.")) }
         let ids = selectedUserIds
         guard !ids.isEmpty else { return .failure(SplitError(message: "Select at least one person.")) }
+
+        // Receipt scans with line items use per-line math (matches `createExpense`’s `splitType: .byItem`).
+        // If we used the UI’s Equal/Percent/etc. here, splits would disagree with stored line items.
+        if let receipt = parsedReceipt {
+            if receipt.items.isEmpty {
+                return .success(service.calculateEqualSplits(amount: total, userIds: ids))
+            }
+            return .success(service.calculateItemSplits(receipt: receipt, participantIds: ids))
+        }
 
         switch splitType {
         case .equal:
@@ -176,6 +197,7 @@ class AddExpenseViewModel {
                     }
                 }
                 let gid: UUID? = context == .friends ? nil : selectedGroupId
+                let lineItemReceipt = parsedReceipt.map { !$0.items.isEmpty } ?? false
                 try await service.createExpense(
                     groupId: gid,
                     paidBy: paidBy,
@@ -183,7 +205,7 @@ class AddExpenseViewModel {
                     amount: totalWithTax,
                     currency: currency,
                     category: category.rawValue,
-                    splitType: parsedReceipt != nil ? .byItem : splitType,
+                    splitType: lineItemReceipt ? .byItem : splitType,
                     splits: splits,
                     isRecurring: isRecurring,
                     recurrenceInterval: isRecurring ? recurrenceInterval : nil,
