@@ -7,7 +7,10 @@ struct GroupDetailView: View {
     @State private var expenses: [Expense] = []
     @State private var members: [AppUser] = []
     @State private var showAddMember = false
-    @State private var memberEmail = ""
+    @State private var memberSearch = ""
+    @State private var memberSearchResults: [AppUser] = []
+    @State private var isSearchingMembers = false
+    @State private var selectedUserToAdd: AppUser?
     @State private var memberError: String?
     @State private var isAddingMember = false
     private let service = GroupService()
@@ -16,6 +19,7 @@ struct GroupDetailView: View {
     @State private var showShareSheet = false
     @State private var isGeneratingLink = false
     @State private var showBudget = false
+    @State private var showLeaderboard = false
 
     var body: some View {
         List {
@@ -23,14 +27,14 @@ struct GroupDetailView: View {
             Section {
                 ForEach(members) { member in
                     HStack {
-                        Text(String(member.name.prefix(1)).uppercased())
+                        Text(String(member.displayName.prefix(1)).uppercased())
                             .font(.caption.bold())
                             .foregroundStyle(ChipInTheme.accent)
                             .frame(width: 32, height: 32)
                             .background(ChipInTheme.accent.opacity(0.2))
                             .clipShape(Circle())
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(member.name)
+                            Text(member.displayName)
                                 .foregroundStyle(ChipInTheme.label)
                             if let u = member.username, !u.isEmpty {
                                 Text("@\(u)")
@@ -64,7 +68,9 @@ struct GroupDetailView: View {
                 }
 
                 Button {
-                    memberEmail = ""
+                    memberSearch = ""
+                    memberSearchResults = []
+                    selectedUserToAdd = nil
                     memberError = nil
                     showAddMember = true
                 } label: {
@@ -127,6 +133,13 @@ struct GroupDetailView: View {
                         Image(systemName: "chart.pie.fill")
                             .foregroundStyle(ChipInTheme.accent)
                     }
+                    Button {
+                        showLeaderboard = true
+                    } label: {
+                        Image(systemName: "trophy.fill")
+                            .foregroundStyle(ChipInTheme.accent)
+                    }
+                    .accessibilityLabel("Group Stats")
                 }
             }
         }
@@ -143,33 +156,103 @@ struct GroupDetailView: View {
         .sheet(isPresented: $showBudget) {
             GroupBudgetView(group: group, totalSpent: expenses.reduce(0) { $0 + $1.totalAmount })
         }
+        .sheet(isPresented: $showLeaderboard) {
+            GroupLeaderboardView(group: group, members: members)
+        }
     }
 
     private var addMemberSheet: some View {
         NavigationStack {
             ZStack {
                 ChipInTheme.background.ignoresSafeArea()
-                VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
                     Text("Add Member")
                         .font(.title2.bold())
                         .foregroundStyle(ChipInTheme.label)
-                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                    TextField("Email address", text: $memberEmail)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(14)
-                        .background(ChipInTheme.card)
-                        .foregroundStyle(ChipInTheme.label)
-                        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
-                        .overlay(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius).stroke(ChipInTheme.elevated, lineWidth: 1))
+                    Text("Search by name, @username, or email — pick someone who already uses ChipIn.")
+                        .font(.subheadline)
+                        .foregroundStyle(ChipInTheme.onSurfaceVariant)
+
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                        TextField("Search…", text: $memberSearch)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .foregroundStyle(ChipInTheme.label)
+                            .onChange(of: memberSearch) { _, _ in
+                                Task { await searchMembersForGroup() }
+                            }
+                        if isSearchingMembers {
+                            ProgressView().tint(ChipInTheme.accent).scaleEffect(0.85)
+                        } else if !memberSearch.isEmpty {
+                            Button {
+                                memberSearch = ""
+                                memberSearchResults = []
+                                selectedUserToAdd = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(ChipInTheme.tertiaryLabel)
+                            }
+                        }
+                    }
+                    .padding(14)
+                    .background(ChipInTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius, style: .continuous)
+                            .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                    )
+
+                    if !memberSearchResults.isEmpty {
+                        ScrollView {
+                            VStack(spacing: 8) {
+                                ForEach(memberSearchResults) { user in
+                                    let selected = selectedUserToAdd?.id == user.id
+                                    Button {
+                                        selectedUserToAdd = user
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            Text(String(user.displayName.prefix(1)).uppercased())
+                                                .font(.subheadline.bold())
+                                                .foregroundStyle(.white)
+                                                .frame(width: 40, height: 40)
+                                                .background(ChipInTheme.avatarColor(for: user.id.uuidString))
+                                                .clipShape(Circle())
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(user.displayName)
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .foregroundStyle(ChipInTheme.label)
+                                                Text(user.handle)
+                                                    .font(.caption)
+                                                    .foregroundStyle(ChipInTheme.tertiaryLabel)
+                                            }
+                                            Spacer()
+                                            if selected {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundStyle(ChipInTheme.accent)
+                                            }
+                                        }
+                                        .padding(12)
+                                        .background(selected ? ChipInTheme.elevated : ChipInTheme.card)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 280)
+                    } else if memberSearch.trimmingCharacters(in: .whitespaces).count >= 2, !isSearchingMembers {
+                        Text("No matches — try another spelling or email.")
+                            .font(.caption)
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                    }
 
                     if let err = memberError {
                         Text(err)
                             .font(.caption)
                             .foregroundStyle(ChipInTheme.danger)
-                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     Button {
@@ -177,24 +260,31 @@ struct GroupDetailView: View {
                     } label: {
                         ZStack {
                             if isAddingMember {
-                                ProgressView().tint(.black)
+                                ProgressView().tint(ChipInTheme.onPrimary)
                             } else {
                                 Text("Add to Group")
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(.black)
+                                    .foregroundStyle(ChipInTheme.onPrimary)
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(ChipInTheme.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+                        .background {
+                            if selectedUserToAdd == nil {
+                                ChipInTheme.elevated
+                            } else {
+                                ChipInTheme.ctaGradient
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius, style: .continuous))
                     }
-                    .disabled(memberEmail.trimmingCharacters(in: .whitespaces).isEmpty || isAddingMember)
+                    .disabled(selectedUserToAdd == nil || isAddingMember)
 
                     Spacer()
                 }
                 .padding(ChipInTheme.padding)
             }
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showAddMember = false }
@@ -212,14 +302,37 @@ struct GroupDetailView: View {
         members = (try? await membersTask) ?? []
     }
 
+    private func searchMembersForGroup() async {
+        let trimmed = memberSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            memberSearchResults = []
+            return
+        }
+        isSearchingMembers = true
+        defer { isSearchingMembers = false }
+        let found = (try? await service.searchUsers(trimmed)) ?? []
+        let memberIds = Set(members.map(\.id))
+        let me = auth.currentUser?.id
+        memberSearchResults = found.filter { u in
+            !memberIds.contains(u.id) && u.id != me
+        }
+    }
+
     private func addMember() async {
         memberError = nil
+        guard let user = selectedUserToAdd else {
+            memberError = "Select someone from the list."
+            return
+        }
         isAddingMember = true
         defer { isAddingMember = false }
         do {
-            let user = try await service.addMember(groupId: group.id, email: memberEmail.trimmingCharacters(in: .whitespaces))
-            members.append(user)
+            let added = try await service.addMember(groupId: group.id, user: user)
+            members.append(added)
             showAddMember = false
+            selectedUserToAdd = nil
+            memberSearch = ""
+            memberSearchResults = []
         } catch {
             memberError = error.localizedDescription
         }
