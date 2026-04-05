@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var interacContact = ""
     @State private var username = ""
     @State private var isSavingInterac = false
+    @State private var showQR = false
     @State private var selectedAvatar: PhotosPickerItem?
     @State private var avatarUIImage: UIImage?
     @State private var isUploadingAvatar = false
@@ -108,6 +109,24 @@ struct ProfileView: View {
                     Text("Username")
                 } footer: {
                     Text("Friends can find you by @username")
+                }
+
+                // Add Friend by QR
+                Section {
+                    Button {
+                        showQR = true
+                    } label: {
+                        Label("Add Friend by QR Code", systemImage: "qrcode")
+                            .foregroundStyle(ChipInTheme.accent)
+                    }
+                    .listRowBackground(ChipInTheme.card)
+                } footer: {
+                    Text("Show your QR to a friend or paste theirs to look them up")
+                }
+                .sheet(isPresented: $showQR) {
+                    if let user = auth.currentUser {
+                        FriendQRView(userId: user.id, displayName: user.displayName)
+                    }
                 }
 
                 // Interac e-Transfer
