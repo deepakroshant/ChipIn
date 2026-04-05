@@ -139,6 +139,10 @@ struct AddExpenseView: View {
         DisclosureGroup(isExpanded: $showMoreOptions) {
             VStack(spacing: 20) {
                 taxSection
+                if vm.category == .food || vm.category == .fun {
+                    TipCalculatorView(subtotal: vm.amountDecimal, tipAmount: $vm.tipAmount)
+                        .animation(.spring(response: 0.35), value: vm.category)
+                }
                 splitTypeSection
                 customSplitSection
                 receiptSection

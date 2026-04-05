@@ -35,11 +35,14 @@ class AddExpenseViewModel {
     /// Optional tax amount added on top (distributed proportionally).
     var taxAmount = ""
 
+    /// Tip amount (added on top, distributed proportionally).
+    var tipAmount: Decimal = 0
+
     private let service = ExpenseService()
 
     var amountDecimal: Decimal { Decimal(string: amount) ?? 0 }
     var taxDecimal: Decimal { Decimal(string: taxAmount) ?? 0 }
-    var totalWithTax: Decimal { amountDecimal + taxDecimal }
+    var totalWithTax: Decimal { amountDecimal + taxDecimal + tipAmount }
 
     // MARK: - Computed summaries for validation UI
 
