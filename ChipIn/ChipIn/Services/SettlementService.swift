@@ -94,7 +94,7 @@ enum BankApp: String, CaseIterable, Identifiable {
         switch self {
         case .td: return URL(string: "https://www.td.com/ca/en/personal-banking")
         case .rbc: return URL(string: "https://www.rbcroyalbank.com/ways-to-bank/online-banking/")
-        case .scotiabank: return URL(string: "https://www.scotiabank.com/ca/en/personal/bank-accounts/online-banking.html")
+        case .scotiabank: return URL(string: "https://www.scotiabank.com/ca/en/personal.html")
         case .bmo: return URL(string: "https://www.bmo.com/en-ca/main/personal/online-banking/")
         case .cibc: return URL(string: "https://www.cibc.com/en/personal-banking/ways-to-bank/online-banking.html")
         case .tangerine: return URL(string: "https://www.tangerine.ca/en/")
