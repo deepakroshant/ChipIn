@@ -69,13 +69,15 @@ struct ExpenseDetailView: View {
                     } else {
                         LazyVStack(spacing: 0) {
                             ForEach(splits) { split in
-                                let name = splitUsers[split.userId]?.name ?? "Unknown"
+                                let u = splitUsers[split.userId]
+                                let name = u?.displayName ?? "Unknown"
+                                let colorKey = u?.id.uuidString ?? split.userId.uuidString
                                 HStack(spacing: 12) {
                                     Text(String(name.prefix(1)).uppercased())
                                         .font(.subheadline.bold())
                                         .foregroundStyle(ChipInTheme.label)
                                         .frame(width: 36, height: 36)
-                                        .background(ChipInTheme.avatarColor(for: name).opacity(0.25))
+                                        .background(ChipInTheme.avatarColor(for: colorKey).opacity(0.25))
                                         .clipShape(Circle())
 
                                     VStack(alignment: .leading, spacing: 2) {
@@ -104,6 +106,18 @@ struct ExpenseDetailView: View {
                         .background(ChipInTheme.card)
                         .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius))
                         .padding(.horizontal, ChipInTheme.padding)
+                    }
+                }
+
+                // Reactions
+                if let currentUserId = auth.currentUser?.id {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Reactions")
+                            .font(.footnote.uppercaseSmallCaps())
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                            .padding(.horizontal, ChipInTheme.padding)
+                        ReactionsBar(expenseId: expense.id, currentUserId: currentUserId)
+                            .padding(.horizontal, ChipInTheme.padding)
                     }
                 }
 
@@ -211,7 +225,7 @@ struct ExpenseDetailView: View {
             }
             .navigationTitle("Edit Expense")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -256,13 +270,15 @@ struct ExpenseDetailView: View {
             if !comments.isEmpty {
                 LazyVStack(spacing: 0) {
                     ForEach(comments) { comment in
-                        let name = commentUsers[comment.userId]?.name ?? "?"
+                        let cu = commentUsers[comment.userId]
+                        let name = cu?.displayName ?? "?"
+                        let colorKey = cu?.id.uuidString ?? comment.userId.uuidString
                         HStack(alignment: .top, spacing: 10) {
                             Text(String(name.prefix(1)).uppercased())
                                 .font(.caption.bold())
                                 .foregroundStyle(ChipInTheme.label)
                                 .frame(width: 30, height: 30)
-                                .background(ChipInTheme.avatarColor(for: name).opacity(0.25))
+                                .background(ChipInTheme.avatarColor(for: colorKey).opacity(0.25))
                                 .clipShape(Circle())
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 6) {
