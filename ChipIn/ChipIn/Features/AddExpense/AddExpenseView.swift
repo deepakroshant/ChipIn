@@ -18,6 +18,8 @@ struct AddExpenseView: View {
     @State private var isSearching = false
     @State private var searchError: String?
     @State private var showItemSplit = false
+    /// Collapsed by default so simple expenses aren’t buried in split/receipt/tax controls.
+    @State private var showMoreOptions = false
     @FocusState private var amountFocused: Bool
     @FocusState private var searchFocused: Bool
     private let service = GroupService()
@@ -30,14 +32,10 @@ struct AddExpenseView: View {
                     VStack(spacing: 20) {
                         contextPicker
                         amountSection
-                        taxSection
                         detailsSection
                         splitWithSection
                         paidBySection
-                        splitTypeSection
-                        customSplitSection
-                        receiptSection
-                        recurringSection
+                        moreOptionsSection
                         errorBanner
                     }
                     .padding()
@@ -66,16 +64,8 @@ struct AddExpenseView: View {
                         .foregroundStyle(ChipInTheme.accent)
                     }
                 }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") {
-                        amountFocused = false
-                        searchFocused = false
-                    }
-                    .foregroundStyle(ChipInTheme.accent)
-                }
             }
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .task {
                 await loadInitialData()
@@ -97,12 +87,21 @@ struct AddExpenseView: View {
                 ReceiptScannerView(parsedReceipt: $vm.parsedReceipt)
             }
             .onChange(of: vm.parsedReceipt) { _, receipt in
-                guard receipt != nil else { return }
+                guard let receipt else { return }
+                if !receipt.items.isEmpty {
+                    vm.splitType = .byItem
+                }
+                showMoreOptions = true
                 if vm.amount.isEmpty || vm.amount == "0.00" {
                     vm.amount = "\(vm.parsedReceipt?.total ?? 0)"
                 }
                 if vm.title.isEmpty { vm.title = "Receipt" }
-                showItemSplit = true
+                // Let the scanner sheet finish dismissing before presenting Assign Items (avoids stacked sheet glitches).
+                if !receipt.items.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        showItemSplit = true
+                    }
+                }
             }
             .sheet(isPresented: $showItemSplit) {
                 itemSplitSheet
@@ -119,7 +118,8 @@ struct AddExpenseView: View {
                 get: { vm.parsedReceipt ?? empty },
                 set: { vm.parsedReceipt = $0 }
             ),
-            groupMembers: members
+            groupMembers: members,
+            currentUserId: auth.currentUser?.id
         )
     }
 
@@ -132,6 +132,35 @@ struct AddExpenseView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
         }
+    }
+
+    /// Keeps the default path simple (amount + who); receipt scan & split modes live here.
+    private var moreOptionsSection: some View {
+        DisclosureGroup(isExpanded: $showMoreOptions) {
+            VStack(spacing: 20) {
+                taxSection
+                splitTypeSection
+                customSplitSection
+                receiptSection
+                recurringSection
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tax, split method & receipt")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ChipInTheme.label)
+                    Text("Optional — scan a receipt, add tax, or change how you split.")
+                        .font(.caption)
+                        .foregroundStyle(ChipInTheme.tertiaryLabel)
+                }
+                Spacer()
+            }
+        }
+        .padding(14)
+        .background(ChipInTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .tint(ChipInTheme.accent)
     }
 
     // MARK: - Context picker
@@ -181,7 +210,11 @@ struct AddExpenseView: View {
             }
             .padding(16)
             .background(ChipInTheme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            )
             .onTapGesture { amountFocused = true }
         }
     }
@@ -263,9 +296,9 @@ struct AddExpenseView: View {
                                     searchFocused = false
                                 } label: {
                                     HStack(spacing: 12) {
-                                        avatarCircle(name: user.name, size: 36)
+                                        avatarCircle(user: user, size: 36)
                                         VStack(alignment: .leading, spacing: 1) {
-                                            Text(user.name)
+                                            Text(user.displayName)
                                                 .font(.subheadline.weight(.medium))
                                                 .foregroundStyle(ChipInTheme.label)
                                             Text(user.handle)
@@ -340,9 +373,9 @@ struct AddExpenseView: View {
             vm.toggleSplitParticipant(user.id)
         } label: {
             HStack(spacing: 12) {
-                avatarCircle(name: user.name, size: 40)
+                avatarCircle(user: user, size: 40)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(user.name)
+                    Text(user.displayName)
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(ChipInTheme.label)
                     Text(isYou ? "You" : user.handle)
@@ -368,12 +401,13 @@ struct AddExpenseView: View {
     }
 
     @ViewBuilder
-    private func avatarCircle(name: String, size: CGFloat) -> some View {
-        Text(String(name.prefix(1)).uppercased())
+    private func avatarCircle(user: AppUser, size: CGFloat) -> some View {
+        let d = user.displayName
+        Text(String(d.prefix(1)).uppercased())
             .font(.system(size: size * 0.4, weight: .bold))
             .frame(width: size, height: size)
-            .background(ChipInTheme.avatarColor(for: name).opacity(0.3))
-            .foregroundStyle(ChipInTheme.avatarColor(for: name))
+            .background(ChipInTheme.avatarColor(for: user.id.uuidString).opacity(0.3))
+            .foregroundStyle(ChipInTheme.avatarColor(for: user.id.uuidString))
             .clipShape(Circle())
     }
 
@@ -382,10 +416,20 @@ struct AddExpenseView: View {
     private var splitTypeSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Split method")
-            SplitPickerView(splitType: $vm.splitType)
-                .padding(12)
-                .background(ChipInTheme.card)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+            if let r = vm.parsedReceipt, !r.items.isEmpty {
+                Text("This expense follows your receipt lines. Unassigned lines are split evenly across everyone selected.")
+                    .font(.subheadline)
+                    .foregroundStyle(ChipInTheme.secondaryLabel)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(ChipInTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            } else {
+                SplitPickerView(splitType: $vm.splitType)
+                    .padding(12)
+                    .background(ChipInTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
         }
     }
 
@@ -430,13 +474,13 @@ struct AddExpenseView: View {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             } label: {
                                 HStack(spacing: 8) {
-                                    Text(String(user.name.prefix(1)).uppercased())
+                                    Text(String(user.displayName.prefix(1)).uppercased())
                                         .font(.caption.bold())
                                         .frame(width: 26, height: 26)
-                                        .background(ChipInTheme.avatarColor(for: user.name).opacity(isSelected ? 1 : 0.3))
+                                        .background(ChipInTheme.avatarColor(for: user.id.uuidString).opacity(isSelected ? 1 : 0.3))
                                         .foregroundStyle(.white)
                                         .clipShape(Circle())
-                                    Text(isYou ? "You" : user.name.components(separatedBy: " ").first ?? user.name)
+                                    Text(isYou ? "You" : user.displayName.components(separatedBy: " ").first ?? user.displayName)
                                         .font(.subheadline.weight(isSelected ? .semibold : .regular))
                                         .foregroundStyle(isSelected ? ChipInTheme.label : ChipInTheme.secondaryLabel)
                                 }
@@ -499,8 +543,8 @@ struct AddExpenseView: View {
     private func customSplitRow(user: AppUser) -> some View {
         let isYou = user.id == auth.currentUser?.id
         HStack(spacing: 12) {
-            avatarCircle(name: user.name, size: 36)
-            Text(isYou ? "You" : user.name.components(separatedBy: " ").first ?? user.name)
+            avatarCircle(user: user, size: 36)
+            Text(isYou ? "You" : user.displayName.components(separatedBy: " ").first ?? user.displayName)
                 .font(.subheadline)
                 .foregroundStyle(ChipInTheme.label)
             Spacer()
