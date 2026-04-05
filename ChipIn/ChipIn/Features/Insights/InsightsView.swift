@@ -5,6 +5,7 @@ struct InsightsView: View {
     @Environment(AuthManager.self) var auth
     @State private var vm = InsightsViewModel()
     @State private var showExport = false
+    @State private var showWrapped = false
 
     var body: some View {
         NavigationStack {
@@ -41,6 +42,42 @@ struct InsightsView: View {
                                 .font(.subheadline).foregroundStyle(ChipInTheme.secondaryLabel)
                         }
                         .frame(maxWidth: .infinity).padding(40)
+                    }
+
+                    // Wrapped banner
+                    Button {
+                        showWrapped = true
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("🎓 \(Calendar.current.component(.year, from: Date())) Wrapped")
+                                    .font(.headline).foregroundStyle(ChipInTheme.label)
+                                Text("Your year in numbers")
+                                    .font(.caption).foregroundStyle(ChipInTheme.secondaryLabel)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(ChipInTheme.accent)
+                        }
+                        .padding(16)
+                        .background(
+                            LinearGradient(
+                                colors: [ChipInTheme.accent.opacity(0.25), ChipInTheme.accent.opacity(0.05)],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius, style: .continuous)
+                                .stroke(ChipInTheme.accent.opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    .fullScreenCover(isPresented: $showWrapped) {
+                        if let userId = auth.currentUser?.id {
+                            WrappedView(userId: userId)
+                        }
                     }
 
                     // Monthly total card
@@ -129,7 +166,7 @@ struct InsightsView: View {
             }
             .background(ChipInTheme.background)
             .navigationTitle("Insights")
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .task {
                 if let id = auth.currentUser?.id { await vm.load(userId: id) }
@@ -166,20 +203,22 @@ struct StatCard: View {
     let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(ChipInTheme.secondaryLabel)
-                .textCase(.uppercase)
-                .tracking(0.5)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(ChipInTheme.onSurfaceVariant)
             Text(value, format: .currency(code: "CAD"))
                 .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(ChipInTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(ChipInTheme.elevated.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
     }
 }
 
@@ -213,12 +252,12 @@ struct ExportSheetView: View {
                     Button {
                         Task { await export() }
                     } label: {
-                        if isExporting { ProgressView().tint(.black) }
-                        else { Text("Export CSV").fontWeight(.semibold).foregroundStyle(.black) }
+                        if isExporting { ProgressView().tint(ChipInTheme.onPrimary) }
+                        else { Text("Export CSV").fontWeight(.semibold).foregroundStyle(ChipInTheme.onPrimary) }
                     }
                     .frame(maxWidth: .infinity).padding()
-                    .background(ChipInTheme.accentGradient)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .background(ChipInTheme.ctaGradient)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .padding(.horizontal)
                     .disabled(isExporting)
                     if let url = exportURL {
