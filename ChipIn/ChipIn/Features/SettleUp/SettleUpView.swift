@@ -12,12 +12,14 @@ struct SettleUpView: View {
     @Environment(AuthManager.self) var auth
     @State private var vm = SettleUpViewModel()
     @State private var showBankPicker = false
-    @State private var amountCopied = false
-    @State private var emailCopied = false
+    @State private var copiedField: String?
+    @State private var preferredBank: BankApp?
     private let service = SettlementService()
 
-    private var myName: String { auth.currentUser?.name ?? "Me" }
     private var theirEmail: String { toUser.interacContact ?? toUser.email }
+    private var reference: String { "ChipIn payment" }
+    private var tintColor: Color { isPayment ? ChipInTheme.success : ChipInTheme.accent }
+    private var amountString: String { String(format: "$%.2f", NSDecimalNumber(decimal: amount).doubleValue) }
 
     var body: some View {
         NavigationStack {
@@ -29,8 +31,8 @@ struct SettleUpView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 20) {
-                            amountHeader
-                            interacSection
+                            heroHeader
+                            transferDetailsCard
                             bankSection
                             markSettledButton
                         }
@@ -39,10 +41,10 @@ struct SettleUpView: View {
                     }
                 }
             }
-            .navigationTitle(isPayment ? "Pay \(toUser.name)" : "Request from \(toUser.name)")
+            .navigationTitle(isPayment ? "Pay via Interac" : "Request via Interac")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -51,38 +53,40 @@ struct SettleUpView: View {
             }
             .sheet(isPresented: $showBankPicker) {
                 BankPickerSheet { bank in
-                    vm.openBank(bank)
+                    preferredBank = bank
+                    saveBankPreference(bank)
                     showBankPicker = false
+                    service.openBankApp(bank)
                 }
             }
+            .onAppear { loadBankPreference() }
         }
     }
 
     // MARK: - Sub-views
 
-    private var amountHeader: some View {
+    private var heroHeader: some View {
         VStack(spacing: 8) {
-            // Recipient avatar
             ZStack {
                 Circle()
                     .fill(LinearGradient(
-                        colors: [ChipInTheme.avatarColor(for: toUser.name), ChipInTheme.avatarColor(for: toUser.name).opacity(0.5)],
+                        colors: [ChipInTheme.avatarColor(for: toUser.id.uuidString), ChipInTheme.avatarColor(for: toUser.id.uuidString).opacity(0.5)],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
                     .frame(width: 72, height: 72)
-                Text(String(toUser.name.prefix(1)).uppercased())
+                Text(String(toUser.displayName.prefix(1)).uppercased())
                     .font(.title.bold()).foregroundStyle(.white)
             }
 
-            Text(toUser.name)
+            Text(toUser.displayName)
                 .font(.headline).foregroundStyle(ChipInTheme.label)
+
+            Text(isPayment ? "You're sending" : "You're requesting")
+                .font(.subheadline).foregroundStyle(ChipInTheme.secondaryLabel)
 
             Text(amount, format: .currency(code: "CAD"))
                 .font(.system(size: 48, weight: .bold, design: .rounded))
-                .foregroundStyle(isPayment ? ChipInTheme.danger : ChipInTheme.success)
-
-            Text(isPayment ? "you owe" : "owes you")
-                .font(.subheadline).foregroundStyle(ChipInTheme.secondaryLabel)
+                .foregroundStyle(tintColor)
         }
         .frame(maxWidth: .infinity)
         .padding(24)
@@ -90,66 +94,52 @@ struct SettleUpView: View {
         .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius))
     }
 
-    private var interacSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Interac e-Transfer", systemImage: "arrow.left.arrow.right.circle.fill")
+    private var transferDetailsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label("Transfer Details", systemImage: "arrow.left.arrow.right.circle.fill")
                 .font(.footnote.uppercaseSmallCaps())
                 .foregroundStyle(ChipInTheme.tertiaryLabel)
 
-            // Recipient email / phone chip
-            HStack {
-                Image(systemName: "envelope.fill")
-                    .foregroundStyle(ChipInTheme.accent)
-                Text(theirEmail)
-                    .font(.subheadline)
-                    .foregroundStyle(ChipInTheme.label)
-                    .lineLimit(1)
-                Spacer()
-                Button {
-                    UIPasteboard.general.string = theirEmail
-                    emailCopied = true
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { emailCopied = false }
-                } label: {
-                    Text(emailCopied ? "Copied!" : "Copy")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(emailCopied ? ChipInTheme.success : ChipInTheme.accent)
-                }
-            }
-            .padding(14)
-            .background(ChipInTheme.elevated)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            // Open in Mail (mailto: — no URL scheme declaration needed)
-            Button {
-                service.openInteracEmail(
-                    to: theirEmail,
-                    amount: amount,
-                    recipientName: toUser.name,
-                    senderName: myName,
-                    isRequest: !isPayment
-                )
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            } label: {
-                HStack {
-                    Image(systemName: isPayment ? "paperplane.fill" : "tray.and.arrow.down.fill")
-                    Text(isPayment ? "Open Mail — Send Interac" : "Open Mail — Request Interac")
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(ChipInTheme.accentGradient)
-                .foregroundStyle(.black)
-                .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
-            }
-
-            Text("Opens your Mail app with the amount and recipient pre-filled. Send the email — your bank will notify them to complete the transfer.")
-                .font(.caption)
-                .foregroundStyle(ChipInTheme.tertiaryLabel)
+            detailRow(
+                label: isPayment ? "Send to (Interac email)" : "Request from",
+                value: theirEmail,
+                field: "email"
+            )
+            Divider().background(ChipInTheme.elevated)
+            detailRow(label: "Amount", value: amountString, field: "amount")
+            Divider().background(ChipInTheme.elevated)
+            detailRow(label: "Reference / Note", value: reference, field: "reference")
         }
         .padding(16)
         .background(ChipInTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius))
+    }
+
+    private func detailRow(label: String, value: String, field: String) -> some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label).font(.caption).foregroundStyle(ChipInTheme.tertiaryLabel)
+                Text(value).font(.subheadline.weight(.medium)).foregroundStyle(ChipInTheme.label)
+            }
+            Spacer()
+            copyButton(text: value, field: field)
+        }
+    }
+
+    private func copyButton(text: String, field: String) -> some View {
+        Button {
+            UIPasteboard.general.string = text
+            copiedField = field
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copiedField = nil }
+        } label: {
+            Text(copiedField == field ? "Copied!" : "Copy")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(copiedField == field ? ChipInTheme.success : ChipInTheme.accent)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(ChipInTheme.elevated)
+                .clipShape(Capsule())
+        }
     }
 
     private var bankSection: some View {
@@ -158,18 +148,50 @@ struct SettleUpView: View {
                 .font(.footnote.uppercaseSmallCaps())
                 .foregroundStyle(ChipInTheme.tertiaryLabel)
 
-            Button { showBankPicker = true } label: {
-                HStack {
-                    Image(systemName: "arrow.up.forward.app.fill")
-                    Text("Choose Your Bank")
-                        .fontWeight(.semibold)
+            if let bank = preferredBank {
+                Button {
+                    service.openBankApp(bank)
+                } label: {
+                    HStack {
+                        Text(bank.emoji)
+                        Text("Open \(bank.rawValue)")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(tintColor)
+                    .foregroundStyle(.black)
+                    .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+                }
+
+                Button { showBankPicker = true } label: {
+                    Text("Choose a Different Bank")
+                        .font(.subheadline)
+                        .foregroundStyle(ChipInTheme.secondaryLabel)
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(ChipInTheme.elevated)
-                .foregroundStyle(ChipInTheme.label)
-                .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+            } else {
+                Button { showBankPicker = true } label: {
+                    HStack {
+                        Image(systemName: "arrow.up.forward.app.fill")
+                        Text("Open Your Bank App")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(tintColor)
+                    .foregroundStyle(.black)
+                    .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+                }
             }
+
+            Text("Copy the details above, open your bank app, and paste into the e-Transfer form.")
+                .font(.caption)
+                .foregroundStyle(ChipInTheme.tertiaryLabel)
         }
         .padding(16)
         .background(ChipInTheme.card)
@@ -193,7 +215,7 @@ struct SettleUpView: View {
                         ProgressView().tint(ChipInTheme.accent)
                     } else {
                         Image(systemName: "checkmark.circle")
-                        Text(isPayment ? "I've paid — mark as settled" : "They've paid — mark as settled")
+                        Text(isPayment ? "I've sent the transfer — Mark Settled" : "They've paid — Mark Settled")
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -217,8 +239,8 @@ struct SettleUpView: View {
             Text("All settled!")
                 .font(.title.bold()).foregroundStyle(ChipInTheme.label)
             Text(isPayment
-                ? "You paid \(amount, format: .currency(code: "CAD")) to \(toUser.name)"
-                : "\(toUser.name) paid \(amount, format: .currency(code: "CAD")) back to you"
+                ? "You paid \(amount, format: .currency(code: "CAD")) to \(toUser.displayName)"
+                : "\(toUser.displayName) paid \(amount, format: .currency(code: "CAD")) back to you"
             )
             .foregroundStyle(ChipInTheme.secondaryLabel)
             .multilineTextAlignment(.center)
@@ -227,6 +249,18 @@ struct SettleUpView: View {
                 .tint(ChipInTheme.accent)
         }
         .padding()
+    }
+
+    // MARK: - Bank Preference
+
+    private func loadBankPreference() {
+        if let name = UserDefaults.standard.string(forKey: "preferredBankName") {
+            preferredBank = BankApp.allCases.first { $0.rawValue == name }
+        }
+    }
+
+    private func saveBankPreference(_ bank: BankApp) {
+        UserDefaults.standard.set(bank.rawValue, forKey: "preferredBankName")
     }
 }
 
@@ -239,12 +273,14 @@ struct BankPickerSheet: View {
             List(BankApp.allCases) { bank in
                 Button {
                     onSelect(bank)
-                    dismiss()
                 } label: {
                     HStack(spacing: 12) {
                         Text(bank.emoji).font(.title2)
                         Text(bank.rawValue)
                             .foregroundStyle(ChipInTheme.label)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
                     }
                 }
                 .listRowBackground(ChipInTheme.card)
@@ -255,7 +291,13 @@ struct BankPickerSheet: View {
             .navigationTitle("Choose Bank")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(ChipInTheme.secondaryLabel)
+                }
+            }
         }
         .presentationDetents([.medium])
     }
