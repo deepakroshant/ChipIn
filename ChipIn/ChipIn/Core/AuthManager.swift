@@ -41,6 +41,11 @@ class AuthManager {
         }
     }
 
+    func reloadCurrentUser() async {
+        guard let id = currentUser?.id else { return }
+        await loadUser(id: id)
+    }
+
     private func loadUser(id: UUID) async {
         do {
             let user: AppUser = try await supabase
@@ -70,7 +75,14 @@ class AuthManager {
 
         var name = "User"
         if user.isAnonymous { name = "Guest" }
-        if let full = user.userMetadata["full_name"], case .string(let s) = full, !s.isEmpty { name = s }
+        if let full = user.userMetadata["full_name"], case .string(let s) = full, !s.isEmpty {
+            name = s
+        } else if name == "User", let em = user.email, !em.isEmpty, let at = em.firstIndex(of: "@") {
+            let local = String(em[..<at])
+            if !local.isEmpty, !local.hasPrefix("guest-") {
+                name = local.prefix(1).uppercased() + local.dropFirst().lowercased()
+            }
+        }
 
         struct UserRow: Encodable { let id: String; let name: String; let email: String }
 

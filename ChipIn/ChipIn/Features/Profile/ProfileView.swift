@@ -1,6 +1,7 @@
 import SwiftUI
 import Supabase
 import PostgREST
+import PhotosUI
 
 struct ProfileView: View {
     @Environment(AuthManager.self) var auth
@@ -11,6 +12,11 @@ struct ProfileView: View {
     @State private var interacContact = ""
     @State private var username = ""
     @State private var isSavingInterac = false
+    @State private var selectedAvatar: PhotosPickerItem?
+    @State private var avatarUIImage: UIImage?
+    @State private var isUploadingAvatar = false
+    @State private var avatarError: String?
+    private let avatarService = AvatarService()
 
     private let accents = ["#F97316", "#3B82F6", "#10B981", "#8B5CF6", "#EC4899"]
 
@@ -19,17 +25,35 @@ struct ProfileView: View {
             List {
                 // Profile header
                 Section {
-                    HStack(spacing: 14) {
-                        Circle()
-                            .fill(Color(hex: selectedAccent).opacity(0.2))
-                            .frame(width: 56, height: 56)
-                            .overlay(
-                                Text(auth.currentUser?.name.prefix(1).uppercased() ?? "?")
-                                    .font(.title2).bold()
-                                    .foregroundStyle(Color(hex: selectedAccent))
-                            )
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(auth.currentUser?.name ?? "")
+                    VStack(spacing: 12) {
+                        ZStack(alignment: .bottomTrailing) {
+                            avatarImage
+                                .frame(width: 80, height: 80)
+                                .clipShape(Circle())
+
+                            PhotosPicker(selection: $selectedAvatar, matching: .images) {
+                                Image(systemName: "camera.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(ChipInTheme.accent)
+                                    .background(
+                                        Circle()
+                                            .fill(ChipInTheme.background)
+                                            .frame(width: 28, height: 28)
+                                    )
+                            }
+                            .offset(x: 4, y: 4)
+                        }
+
+                        if isUploadingAvatar {
+                            ProgressView("Uploading…")
+                                .font(.caption).tint(ChipInTheme.accent)
+                        }
+                        if let err = avatarError {
+                            Text(err).font(.caption).foregroundStyle(ChipInTheme.danger)
+                        }
+
+                        VStack(spacing: 2) {
+                            Text(auth.currentUser?.displayName ?? "")
                                 .font(.headline).foregroundStyle(ChipInTheme.label)
                             if let u = auth.currentUser?.username, !u.isEmpty {
                                 Text("@\(u)")
@@ -40,7 +64,31 @@ struct ProfileView: View {
                                 .font(.caption).foregroundStyle(ChipInTheme.secondaryLabel)
                         }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
                     .listRowBackground(ChipInTheme.card)
+                }
+                .onChange(of: selectedAvatar) { _, item in
+                    guard let item else { return }
+                    Task {
+                        isUploadingAvatar = true
+                        avatarError = nil
+                        defer { isUploadingAvatar = false }
+                        guard let data = try? await item.loadTransferable(type: Data.self),
+                              let img = UIImage(data: data),
+                              let userId = auth.currentUser?.id else {
+                            avatarError = "Couldn't load photo."
+                            return
+                        }
+                        avatarUIImage = img
+                        do {
+                            let url = try await avatarService.uploadAvatar(userId: userId, image: img)
+                            try await avatarService.saveAvatarURL(userId: userId, url: url)
+                            await auth.reloadCurrentUser()
+                        } catch {
+                            avatarError = error.localizedDescription
+                        }
+                    }
                 }
 
                 // Username
@@ -178,12 +226,43 @@ struct ProfileView: View {
             .scrollContentBackground(.hidden)
             .background(ChipInTheme.background)
             .navigationTitle("Profile")
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .onAppear {
                 interacContact = auth.currentUser?.interacContact ?? ""
                 username = auth.currentUser?.username ?? ""
             }
+        }
+    }
+
+    @ViewBuilder
+    private var avatarImage: some View {
+        if let img = avatarUIImage {
+            Image(uiImage: img)
+                .resizable().scaledToFill()
+        } else if let urlStr = auth.currentUser?.avatarURL,
+                  let url = URL(string: urlStr) {
+            AsyncImage(url: url) { phase in
+                if let img = phase.image {
+                    img.resizable().scaledToFill()
+                } else {
+                    Circle()
+                        .fill(Color(hex: selectedAccent).opacity(0.2))
+                        .overlay(
+                            Text(auth.currentUser?.displayName.prefix(1).uppercased() ?? "?")
+                                .font(.title2).bold()
+                                .foregroundStyle(Color(hex: selectedAccent))
+                        )
+                }
+            }
+        } else {
+            Circle()
+                .fill(Color(hex: selectedAccent).opacity(0.2))
+                .overlay(
+                    Text(auth.currentUser?.displayName.prefix(1).uppercased() ?? "?")
+                        .font(.title2).bold()
+                        .foregroundStyle(Color(hex: selectedAccent))
+                )
         }
     }
 
