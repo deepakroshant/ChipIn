@@ -197,6 +197,18 @@ class AddExpenseViewModel {
         }
     }
 
+    // MARK: - Recurring helpers
+
+    private func nextDueDate(from date: Date, interval: String) -> Date? {
+        let cal = Calendar.current
+        switch interval {
+        case "weekly":  return cal.date(byAdding: .weekOfYear, value: 1, to: date)
+        case "monthly": return cal.date(byAdding: .month, value: 1, to: date)
+        case "yearly":  return cal.date(byAdding: .year, value: 1, to: date)
+        default:        return cal.date(byAdding: .month, value: 1, to: date)
+        }
+    }
+
     // MARK: - Submit
 
     func submit(defaultPaidBy: UUID) async -> Bool {
@@ -235,7 +247,7 @@ class AddExpenseViewModel {
                 }
                 let gid: UUID? = context == .friends ? nil : selectedGroupId
                 let lineItemReceipt = parsedReceipt.map { !$0.items.isEmpty } ?? false
-                try await service.createExpense(
+                let expense = try await service.createExpense(
                     groupId: gid,
                     paidBy: paidBy,
                     title: title,
@@ -248,6 +260,13 @@ class AddExpenseViewModel {
                     recurrenceInterval: isRecurring ? recurrenceInterval : nil,
                     items: expenseItems
                 )
+                if isRecurring, let dueDate = nextDueDate(from: Date(), interval: recurrenceInterval) {
+                    NotificationManager.shared.scheduleRecurringReminder(
+                        expenseTitle: title,
+                        dueDate: dueDate,
+                        expenseId: expense.id
+                    )
+                }
                 SoundService.shared.play(.expenseAdd, haptic: .light)
                 NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
                 return true
