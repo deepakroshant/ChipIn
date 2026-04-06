@@ -23,6 +23,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
+        // Personal Team (free) cannot use Push; paid Apple Developer Program + aps-environment entitlement required for remote APNs.
         print("APNs registration failed: \(error)")
     }
 }
