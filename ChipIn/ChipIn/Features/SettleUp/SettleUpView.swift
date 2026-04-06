@@ -1,4 +1,6 @@
 import SwiftUI
+import StoreKit
+import UIKit
 
 struct SettleUpView: View {
     let fromUserId: UUID
@@ -14,6 +16,7 @@ struct SettleUpView: View {
     @State private var showBankPicker = false
     @State private var copiedField: String?
     @State private var preferredBank: BankApp?
+    @AppStorage("settleCount") private var settleCount = 0
     private let service = SettlementService()
 
     private var theirEmail: String { toUser.interacContact ?? toUser.email }
@@ -60,6 +63,22 @@ struct SettleUpView: View {
                 }
             }
             .onAppear { loadBankPreference() }
+            .onChange(of: vm.isSettled) { _, settled in
+                guard settled else { return }
+                settleCount += 1
+                if settleCount == 3 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        if let scene = UIApplication.shared.connectedScenes
+                            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+                            if #available(iOS 18.0, *) {
+                                AppStore.requestReview(in: scene)
+                            } else {
+                                SKStoreReviewController.requestReview(in: scene)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

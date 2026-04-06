@@ -1,5 +1,10 @@
 import SwiftUI
 
+private enum AmountEntryMode: String, CaseIterable {
+    case manual = "Manual"
+    case receipt = "Receipt"
+}
+
 struct AddExpenseView: View {
     let prefill: Expense?
 
@@ -18,6 +23,7 @@ struct AddExpenseView: View {
     @State private var isSearching = false
     @State private var searchError: String?
     @State private var showItemSplit = false
+    @State private var amountEntryMode: AmountEntryMode = .manual
     /// Collapsed by default so simple expenses aren’t buried in split/receipt/tax controls.
     @State private var showMoreOptions = false
     @FocusState private var amountFocused: Bool
@@ -30,20 +36,18 @@ struct AddExpenseView: View {
                 ChipInTheme.background.ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 20) {
-                        if let userId = auth.currentUser?.id, !vm.templates.isEmpty {
-                            TemplatePickerView(
-                                templates: vm.templates,
-                                onSelect: { vm.applyTemplate($0) },
-                                onDelete: { t in Task { await vm.deleteTemplate(t) } }
-                            )
-                        }
                         contextPicker
+                        entryModeSection
+                        errorBanner
                         amountSection
                         detailsSection
                         splitWithSection
                         paidBySection
-                        moreOptionsSection
-                        errorBanner
+                        if amountEntryMode == .manual {
+                            manualMoreOptionsSection
+                        } else {
+                            receiptMoreOptionsSection
+                        }
                     }
                     .padding()
                     .padding(.bottom, 40)
@@ -61,10 +65,12 @@ struct AddExpenseView: View {
                         ProgressView().tint(ChipInTheme.accent)
                     } else {
                         Button("Save") {
-                            Task {
+                            amountFocused = false
+                            searchFocused = false
+                            Task { @MainActor in
                                 guard let id = auth.currentUser?.id else { return }
                                 if await vm.submit(defaultPaidBy: id) {
-                                    vm.showSaveTemplatePrompt = true
+                                    dismiss()
                                 }
                             }
                         }
@@ -75,24 +81,7 @@ struct AddExpenseView: View {
             }
             .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .alert("Save as Template?", isPresented: $vm.showSaveTemplatePrompt) {
-                TextField("e.g. Tim Hortons Run", text: $vm.templateName)
-                Button("Save") {
-                    guard let id = auth.currentUser?.id, !vm.templateName.isEmpty else {
-                        dismiss()
-                        return
-                    }
-                    Task {
-                        await vm.saveCurrentAsTemplate(userId: id, name: vm.templateName)
-                        dismiss()
-                    }
-                }
-                Button("Skip", role: .cancel) { dismiss() }
-            } message: {
-                Text("Reuse this setup for quick expense entry next time.")
-            }
             .task {
-                if let id = auth.currentUser?.id { await vm.loadTemplates(userId: id) }
                 await loadInitialData()
                 if let p = prefill {
                     vm.title = p.title + " (copy)"
@@ -111,21 +100,29 @@ struct AddExpenseView: View {
             .sheet(isPresented: $vm.showReceiptScanner) {
                 ReceiptScannerView(parsedReceipt: $vm.parsedReceipt)
             }
+            .onChange(of: amountEntryMode) { _, new in
+                if new == .manual {
+                    vm.clearReceiptData()
+                    showItemSplit = false
+                } else {
+                    showMoreOptions = true
+                }
+            }
             .onChange(of: vm.parsedReceipt) { _, receipt in
                 guard let receipt else { return }
-                if !receipt.items.isEmpty {
-                    vm.splitType = .byItem
-                }
+                amountEntryMode = .receipt
                 showMoreOptions = true
-                if vm.amount.isEmpty || vm.amount == "0.00" {
-                    vm.amount = "\(vm.parsedReceipt?.total ?? 0)"
-                }
-                if vm.title.isEmpty { vm.title = "Receipt" }
-                // Let the scanner sheet finish dismissing before presenting Assign Items (avoids stacked sheet glitches).
-                if !receipt.items.isEmpty {
+                vm.applyReceiptToAmountFields(receipt)
+                // Only prompt line assignment when splitting by item (keeps Equal / % on the grand total).
+                if !receipt.items.isEmpty, vm.splitType == .byItem {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                         showItemSplit = true
                     }
+                }
+            }
+            .onChange(of: vm.splitType) { _, new in
+                if new == .byItem, let r = vm.parsedReceipt, !r.items.isEmpty {
+                    showItemSplit = true
                 }
             }
             .sheet(isPresented: $showItemSplit) {
@@ -155,12 +152,33 @@ struct AddExpenseView: View {
                 .font(.subheadline)
                 .foregroundStyle(ChipInTheme.danger)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
+                .padding(12)
+                .background(ChipInTheme.card)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
-    /// Keeps the default path simple (amount + who); receipt scan & split modes live here.
-    private var moreOptionsSection: some View {
+    private var entryModeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Amount entry")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(ChipInTheme.secondaryLabel)
+            Picker("Amount entry", selection: $amountEntryMode) {
+                ForEach(AmountEntryMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            Text(amountEntryMode == .manual
+                ? "Enter amounts yourself — no receipt scan. Use More options for tax, tip, and split."
+                : "Scan with Gemini, then split the total or choose By Item to assign each line.")
+                .font(.caption)
+                .foregroundStyle(ChipInTheme.tertiaryLabel)
+        }
+    }
+
+    /// Manual entry: tax, tip, split — no receipt scanner (receipt lives only in Receipt mode).
+    private var manualMoreOptionsSection: some View {
         DisclosureGroup(isExpanded: $showMoreOptions) {
             VStack(spacing: 20) {
                 taxSection
@@ -170,16 +188,48 @@ struct AddExpenseView: View {
                 }
                 splitTypeSection
                 customSplitSection
-                receiptSection
                 recurringSection
             }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Tax, split method & receipt")
+                    Text("Tax, tip & split")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(ChipInTheme.label)
-                    Text("Optional — scan a receipt, add tax, or change how you split.")
+                    Text("Optional — add tax or tip, or change how you split.")
+                        .font(.caption)
+                        .foregroundStyle(ChipInTheme.tertiaryLabel)
+                }
+                Spacer()
+            }
+        }
+        .padding(14)
+        .background(ChipInTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .tint(ChipInTheme.accent)
+    }
+
+    /// Receipt mode: scan + line items first, then tax, tip, split.
+    private var receiptMoreOptionsSection: some View {
+        DisclosureGroup(isExpanded: $showMoreOptions) {
+            VStack(spacing: 20) {
+                receiptSection
+                taxSection
+                if vm.category == .food || vm.category == .fun {
+                    TipCalculatorView(subtotal: vm.amountDecimal, tipAmount: $vm.tipAmount)
+                        .animation(.spring(response: 0.35), value: vm.category)
+                }
+                splitTypeSection
+                customSplitSection
+                recurringSection
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Receipt scan & line items")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ChipInTheme.label)
+                    Text("Scan the bill, adjust tax if needed, then split the total or use By Item for each line.")
                         .font(.caption)
                         .foregroundStyle(ChipInTheme.tertiaryLabel)
                 }
@@ -257,9 +307,39 @@ struct AddExpenseView: View {
                 TextField("What's this for?", text: $vm.title)
                     .foregroundStyle(ChipInTheme.label)
                     .padding(16)
-                    .onChange(of: vm.title) { _, newTitle in
-                        vm.autoDetectCategory(from: newTitle)
+                    .onChange(of: vm.title) { _, newVal in
+                        if newVal.contains("$") || newVal.contains("@") {
+                            let cleaned = vm.applyQuickParse(raw: newVal)
+                            if cleaned != newVal {
+                                vm.title = cleaned
+                                vm.autoDetectCategory(from: cleaned)
+                                return
+                            }
+                        }
+                        vm.autoDetectCategory(from: newVal)
                     }
+                if let handle = vm.parsedMentionHandle {
+                    HStack(spacing: 6) {
+                        Image(systemName: "at.circle.fill")
+                            .foregroundStyle(ChipInTheme.accent)
+                            .font(.caption)
+                        Text("Searching for @\(handle)…")
+                            .font(.caption)
+                            .foregroundStyle(ChipInTheme.secondaryLabel)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .task(id: handle) {
+                        let found = (try? await service.searchUsers(handle)) ?? []
+                        if let user = found.first {
+                            if !vm.selectedUserIds.contains(user.id) {
+                                vm.selectedUserIds.append(user.id)
+                            }
+                            vm.parsedMentionHandle = nil
+                        }
+                    }
+                }
                 Divider().background(ChipInTheme.elevated)
                 if vm.context == .group {
                     Picker("Group", selection: $vm.selectedGroupId) {
@@ -462,20 +542,21 @@ struct AddExpenseView: View {
     private var splitTypeSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Split method")
-            if let r = vm.parsedReceipt, !r.items.isEmpty {
-                Text("This expense follows your receipt lines. Unassigned lines are split evenly across everyone selected.")
-                    .font(.subheadline)
-                    .foregroundStyle(ChipInTheme.secondaryLabel)
+            if let receipt = vm.parsedReceipt, !receipt.items.isEmpty {
+                Text(vm.splitType == .byItem
+                    ? "By Item: tap each line in Assign items. Unassigned lines are split evenly. Tax is included per line."
+                    : "Equal, Percent, Exact, or Shares split the receipt total (subtotal + tax + tip). Switch to By Item to assign lines.")
+                    .font(.caption)
+                    .foregroundStyle(ChipInTheme.tertiaryLabel)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(ChipInTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-            } else {
-                SplitPickerView(splitType: $vm.splitType)
-                    .padding(12)
-                    .background(ChipInTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .background(ChipInTheme.elevated.opacity(0.6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
+            SplitPickerView(splitType: $vm.splitType)
+                .padding(12)
+                .background(ChipInTheme.card)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
         }
     }
 
@@ -484,6 +565,12 @@ struct AddExpenseView: View {
     private var taxSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Tax (optional)")
+            if vm.parsedReceipt != nil {
+                Text("Filled from the receipt (subtotal + tax + tip = total). Edit only if the scan is wrong.")
+                    .font(.caption)
+                    .foregroundStyle(ChipInTheme.tertiaryLabel)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             HStack {
                 Image(systemName: "plus.circle")
                     .foregroundStyle(ChipInTheme.tertiaryLabel)
@@ -674,13 +761,28 @@ struct AddExpenseView: View {
     private var receiptSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Receipt")
-            Button { vm.showReceiptScanner = true } label: {
+            Button {
+                amountEntryMode = .receipt
+                vm.showReceiptScanner = true
+            } label: {
                 Label("Scan Receipt", systemImage: "camera.fill")
                     .frame(maxWidth: .infinity)
                     .padding(16)
                     .foregroundStyle(ChipInTheme.accent)
                     .background(ChipInTheme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            if let r = vm.parsedReceipt, !r.items.isEmpty, vm.splitType == .byItem {
+                Button {
+                    showItemSplit = true
+                } label: {
+                    Label("Assign line items", systemImage: "list.bullet.rectangle")
+                        .frame(maxWidth: .infinity)
+                        .padding(14)
+                        .foregroundStyle(ChipInTheme.onPrimary)
+                        .background(ChipInTheme.ctaGradient)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
             }
         }
     }

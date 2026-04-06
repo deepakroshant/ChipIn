@@ -5,10 +5,13 @@ struct HomeView: View {
     @Binding var showAddExpense: Bool
 
     @Environment(AuthManager.self) var auth
+    @AppStorage("hideBalances") private var hideBalances = false
+    @AppStorage("accentColor") private var accentColorHex = "#F97316"
     @State private var vm = HomeViewModel()
     @State private var recentExpenses: [Expense] = []
     @State private var showProfile = false
     @State private var showRequestFriends = false
+    @State private var debouncedRefreshTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -52,13 +55,19 @@ struct HomeView: View {
                             .background(ChipInTheme.danger)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             .padding(.horizontal)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
                         if vm.isLoading && vm.personBalances.isEmpty {
-                            ProgressView()
-                                .tint(ChipInTheme.accent)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 48)
+                            VStack(spacing: 0) {
+                                ForEach(0..<4, id: \.self) { _ in
+                                    PersonBalanceRowSkeleton()
+                                    Divider().background(ChipInTheme.elevated).padding(.leading, 68)
+                                }
+                            }
+                            .background(ChipInTheme.card)
+                            .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius, style: .continuous))
+                            .padding(.horizontal)
                         } else if vm.personBalances.isEmpty && recentExpenses.isEmpty {
                             emptyActivityPlaceholder
                         } else {
@@ -117,7 +126,7 @@ struct HomeView: View {
                                                     .font(.subheadline)
                                                     .foregroundStyle(ChipInTheme.label)
                                                 Spacer()
-                                                Text(txn.amount, format: .currency(code: "CAD"))
+                                                Text(BalancePrivacy.currency(txn.amount, code: "CAD", hidden: hideBalances))
                                                     .font(.subheadline.bold())
                                                     .foregroundStyle(ChipInTheme.accent)
                                             }
@@ -158,6 +167,8 @@ struct HomeView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 24)
                 }
+                .animation(ChipInTheme.spring, value: vm.error != nil)
+                .animation(.easeInOut(duration: 0.32), value: vm.isLoading)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -167,16 +178,14 @@ struct HomeView: View {
                             showProfile = true
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         } label: {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 28))
-                                .foregroundStyle(ChipInTheme.accent)
+                            homeToolbarAvatar
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Profile")
 
                         Text("ChipIn")
                             .font(.system(size: 22, weight: .black, design: .rounded))
-                            .foregroundStyle(ChipInTheme.accent)
+                            .foregroundStyle(Color(hex: accentColorHex))
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -186,7 +195,7 @@ struct HomeView: View {
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title3)
-                            .foregroundStyle(ChipInTheme.accent)
+                            .foregroundStyle(Color(hex: accentColorHex))
                     }
                     .accessibilityLabel("Add expense")
                 }
@@ -213,7 +222,10 @@ struct HomeView: View {
                     .environment(auth)
             }
             .onReceive(NotificationCenter.default.publisher(for: .dataDidUpdate)) { _ in
-                Task {
+                debouncedRefreshTask?.cancel()
+                debouncedRefreshTask = Task {
+                    try? await Task.sleep(nanoseconds: 280_000_000)
+                    guard !Task.isCancelled else { return }
                     if let id = auth.currentUser?.id {
                         await loadAll(userId: id)
                     }
@@ -223,28 +235,52 @@ struct HomeView: View {
     }
 
     private var homeStatsRow: some View {
-        HStack(spacing: 12) {
-            statTile(
-                title: "Paid this month",
-                value: vm.lentThisMonthCAD,
-                valueColor: ChipInTheme.label
-            )
-            statTile(
-                title: "You owe (pending)",
-                value: vm.pendingOwedCAD,
-                valueColor: ChipInTheme.accent
-            )
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                statTile(
+                    icon: "arrow.up.circle.fill",
+                    title: "Paid this month",
+                    value: vm.lentThisMonthCAD,
+                    valueColor: ChipInTheme.label,
+                    urgent: false,
+                    hideAmount: hideBalances
+                )
+                statTile(
+                    icon: "arrow.down.circle.fill",
+                    title: "You're owed",
+                    value: max(0, vm.overallNet),
+                    valueColor: ChipInTheme.success,
+                    urgent: false,
+                    hideAmount: hideBalances
+                )
+            }
+            HStack(spacing: 10) {
+                statTile(
+                    icon: "exclamationmark.circle.fill",
+                    title: "You owe",
+                    value: vm.pendingOwedCAD,
+                    valueColor: vm.pendingOwedCAD > 50 ? ChipInTheme.danger : ChipInTheme.accent,
+                    urgent: vm.pendingOwedCAD > 50,
+                    hideAmount: hideBalances
+                )
+                streakTile
+            }
         }
     }
 
-    private func statTile(title: String, value: Decimal, valueColor: Color) -> some View {
+    private var streakTile: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text("🔥 Streak")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(ChipInTheme.onSurfaceVariant)
-            Text(value, format: .currency(code: "CAD"))
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(valueColor)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(vm.streakDays)")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(vm.streakDays >= 3 ? Color(red: 1.0, green: 0.6, blue: 0.1) : ChipInTheme.label)
+                Text("day\(vm.streakDays == 1 ? "" : "s")")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(ChipInTheme.secondaryLabel)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -256,49 +292,45 @@ struct HomeView: View {
         )
     }
 
-    private func loadAll(userId: UUID) async {
-        await vm.load(currentUserId: userId)
-        recentExpenses = await fetchRecentExpenses(userId: userId)
+    private func statTile(icon: String, title: String, value: Decimal, valueColor: Color, urgent: Bool, hideAmount: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(valueColor.opacity(0.7))
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(ChipInTheme.onSurfaceVariant)
+            }
+            Text(BalancePrivacy.currency(value, code: "CAD", hidden: hideAmount))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(valueColor)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(ChipInTheme.elevated.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous)
+                .stroke(urgent ? ChipInTheme.danger.opacity(0.5) : Color.white.opacity(0.05), lineWidth: urgent ? 1.5 : 1)
+        )
     }
 
-    private func fetchRecentExpenses(userId: UUID) async -> [Expense] {
-        let paid: [Expense] = (try? await supabase
+    private func loadAll(userId: UUID) async {
+        await vm.load(currentUserId: userId)
+        recentExpenses = await fetchRecentExpenses()
+    }
+
+    /// Uses `expenses` ordered by time — RLS already limits rows to what you can see (paid, split, or group).
+    private func fetchRecentExpenses() async -> [Expense] {
+        let rows: [Expense] = (try? await supabase
             .from("expenses")
             .select()
-            .eq("paid_by", value: userId)
             .order("created_at", ascending: false)
-            .limit(5)
+            .limit(8)
             .execute()
             .value) ?? []
-
-        let splits: [ExpenseSplit] = (try? await supabase
-            .from("expense_splits")
-            .select()
-            .eq("user_id", value: userId)
-            .order("expense_id", ascending: false)
-            .limit(5)
-            .execute()
-            .value) ?? []
-
-        var involved: [Expense] = []
-        let splitExpenseIds = splits.map(\.expenseId.uuidString)
-        if !splitExpenseIds.isEmpty {
-            involved = (try? await supabase
-                .from("expenses")
-                .select()
-                .in("id", values: splitExpenseIds)
-                .order("created_at", ascending: false)
-                .limit(5)
-                .execute()
-                .value) ?? []
-        }
-
-        var seen = Set<UUID>()
-        let merged = (paid + involved)
-            .filter { seen.insert($0.id).inserted }
-            .sorted { $0.createdAt > $1.createdAt }
-            .prefix(5)
-        return Array(merged)
+        return Array(rows.prefix(5))
     }
 
     private var emptyActivityPlaceholder: some View {
@@ -329,5 +361,82 @@ struct HomeView: View {
                 .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
         .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var homeToolbarAvatar: some View {
+        let initial = String(auth.currentUser?.displayName.prefix(1) ?? "?").uppercased()
+        let accent = Color(hex: accentColorHex)
+        // Keep visual size ≤ nav title row (~28–32pt) so the system glass capsule doesn’t clip a 44pt disc.
+        let plateDiameter: CGFloat = 30
+        let ringDiameter: CGFloat = 28
+        let photoSize: CGFloat = 22
+
+        ZStack {
+            // Soft “chip” plate — sized to sit inside the bar, not taller than “ChipIn” text.
+            Circle()
+                .fill(ChipInTheme.elevated)
+                .frame(width: plateDiameter, height: plateDiameter)
+                .shadow(color: .black.opacity(0.35), radius: 3, y: 2)
+                .shadow(color: accent.opacity(0.18), radius: 4, y: 0)
+
+            Circle()
+                .strokeBorder(
+                    AngularGradient(
+                        colors: [
+                            accent,
+                            accent.opacity(0.55),
+                            Color.white.opacity(0.35),
+                            accent.opacity(0.75),
+                            accent
+                        ],
+                        center: .center
+                    ),
+                    lineWidth: 1.75
+                )
+                .frame(width: ringDiameter, height: ringDiameter)
+
+            // SwiftUI.Group — not `Group` (Codable model in Models/Group.swift).
+            SwiftUI.Group {
+                if let urlStr = auth.currentUser?.avatarURL,
+                   let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        case .failure, .empty:
+                            avatarPlaceholder(initial: initial, accent: accent)
+                        @unknown default:
+                            avatarPlaceholder(initial: initial, accent: accent)
+                        }
+                    }
+                } else {
+                    avatarPlaceholder(initial: initial, accent: accent)
+                }
+            }
+            .frame(width: photoSize, height: photoSize)
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+            )
+        }
+        .frame(width: plateDiameter, height: plateDiameter)
+        // Expand hit target without drawing outside the bar capsule.
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Circle())
+        .id("\(auth.currentUser?.avatarURL ?? "")-\(accentColorHex)")
+    }
+
+    private func avatarPlaceholder(initial: String, accent: Color) -> some View {
+        Circle()
+            .fill(accent.opacity(0.2))
+            .overlay(
+                Text(initial)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(accent)
+            )
     }
 }

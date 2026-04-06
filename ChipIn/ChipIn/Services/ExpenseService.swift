@@ -28,10 +28,12 @@ struct ExpenseService {
         items: [NewExpenseItem] = []
     ) async throws -> Expense {
         let cadAmount = try await currencyService.convert(amount: amount, from: currency)
+        let sessionUserId = try await supabase.auth.session.user.id
 
         struct ExpenseInsert: Encodable {
             let group_id: String?
             let paid_by: String
+            let created_by: String
             let title: String
             let total_amount: String
             let currency: String
@@ -46,6 +48,7 @@ struct ExpenseService {
             .insert(ExpenseInsert(
                 group_id: groupId?.uuidString,
                 paid_by: paidBy.uuidString,
+                created_by: sessionUserId.uuidString,
                 title: title,
                 total_amount: "\(amount)",
                 currency: currency,
@@ -96,7 +99,43 @@ struct ExpenseService {
             }
             try await supabase.from("expense_items").insert(itemRows).execute()
         }
+
+        await Self.notifyParticipantsOfNewExpense(expense: expense, createdBy: sessionUserId)
         return expense
+    }
+
+    /// Tells the `send-push` Edge Function to notify split participants (APNs). Fire-and-forget.
+    private static func notifyParticipantsOfNewExpense(expense: Expense, createdBy: UUID) async {
+        struct PushPayload: Encodable {
+            let table: String
+            let record: Record
+            struct Record: Encodable {
+                let id: String
+                let paid_by: String
+                let created_by: String
+                let title: String
+                let total_amount: String
+                let currency: String
+            }
+        }
+        let payload = PushPayload(
+            table: "expenses",
+            record: .init(
+                id: expense.id.uuidString,
+                paid_by: expense.paidBy.uuidString,
+                created_by: createdBy.uuidString,
+                title: expense.title,
+                total_amount: "\(expense.totalAmount)",
+                currency: expense.currency
+            )
+        )
+        do {
+            _ = try await supabase.functions.invoke("send-push", options: .init(body: payload))
+        } catch {
+            #if DEBUG
+            print("ChipIn send-push failed:", error)
+            #endif
+        }
     }
 
     func updateExpense(id: UUID, title: String, amount: Decimal, currency: String, category: String) async throws {

@@ -6,6 +6,7 @@ struct InsightsView: View {
     @State private var vm = InsightsViewModel()
     @State private var showExport = false
     @State private var showWrapped = false
+    @State private var showMonthRecap = false
 
     var body: some View {
         NavigationStack {
@@ -77,6 +78,36 @@ struct InsightsView: View {
                     .fullScreenCover(isPresented: $showWrapped) {
                         if let userId = auth.currentUser?.id {
                             WrappedView(userId: userId)
+                        }
+                    }
+
+                    Button {
+                        showMonthRecap = true
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("📊 Share This Month")
+                                    .font(.headline).foregroundStyle(ChipInTheme.label)
+                                Text("Beautiful recap card for your stories")
+                                    .font(.caption).foregroundStyle(ChipInTheme.secondaryLabel)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(ChipInTheme.accent)
+                        }
+                        .padding(16)
+                        .background(ChipInTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: ChipInTheme.cardCornerRadius, style: .continuous)
+                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    .sheet(isPresented: $showMonthRecap) {
+                        if let userId = auth.currentUser?.id {
+                            MonthRecapView(userId: userId)
                         }
                     }
 

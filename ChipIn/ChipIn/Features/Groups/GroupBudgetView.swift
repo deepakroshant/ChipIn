@@ -16,6 +16,12 @@ struct GroupBudgetView: View {
     private var remaining: Decimal { max(0, budget - totalSpent) }
     private var overBudget: Bool { totalSpent > budget && budget > 0 }
 
+    private var budgetPlaceholder: String {
+        guard let b = group.budget else { return "0.00" }
+        let n = NSDecimalNumber(decimal: b).doubleValue
+        return String(format: "%.2f", n)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -59,7 +65,7 @@ struct GroupBudgetView: View {
                         Text("Set Budget").font(.caption.uppercaseSmallCaps()).foregroundStyle(ChipInTheme.tertiaryLabel)
                         HStack {
                             Text("$").foregroundStyle(ChipInTheme.tertiaryLabel)
-                            TextField(group.budget != nil ? "\(group.budget!)" : "0.00", text: $budgetInput)
+                            TextField(budgetPlaceholder, text: $budgetInput)
                                 .keyboardType(.decimalPad)
                                 .foregroundStyle(ChipInTheme.label)
                         }
@@ -83,7 +89,7 @@ struct GroupBudgetView: View {
             }
             .navigationTitle("Group Budget")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
@@ -103,7 +109,7 @@ struct GroupBudgetView: View {
         guard let amt = Decimal(string: budgetInput) else { return }
         isSaving = true
         defer { isSaving = false }
-        try? await supabase
+        _ = try? await supabase
             .from("groups")
             .update(["budget": "\(amt)"])
             .eq("id", value: group.id.uuidString)

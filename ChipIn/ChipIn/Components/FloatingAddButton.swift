@@ -6,12 +6,16 @@ struct FloatingAddButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(.black)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(ChipInTheme.onPrimary)
                 .frame(width: 56, height: 56)
-                .background(ChipInTheme.accent)
+                .background(ChipInTheme.ctaGradient)
                 .clipShape(Circle())
-                .shadow(color: ChipInTheme.accent.opacity(0.45), radius: 12, y: 4)
+                .overlay(
+                    Circle()
+                        .stroke(ChipInTheme.background, lineWidth: 4)
+                )
+                .shadow(color: ChipInTheme.accent.opacity(0.45), radius: 14, y: 6)
         }
         .buttonStyle(.plain)
     }

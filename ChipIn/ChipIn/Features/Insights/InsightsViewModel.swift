@@ -66,6 +66,7 @@ class InsightsViewModel {
                 .execute()
                 .value
         } catch {
+            guard error.chipInShouldShowInUI() else { return }
             self.error = error.localizedDescription
         }
     }

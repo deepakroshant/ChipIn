@@ -10,6 +10,21 @@ struct ItemSplitView: View {
         receipt.items.indices.filter { receipt.items[$0].assignedTo == nil }
     }
 
+    /// Single pass over line items — avoids O(members × items) filters in the list.
+    private var splitTotals: (byMember: [UUID: Decimal], unassigned: Decimal) {
+        var byMember: [UUID: Decimal] = [:]
+        var unassigned: Decimal = 0
+        for item in receipt.items {
+            let line = item.price + item.taxPortion
+            if let id = item.assignedTo {
+                byMember[id, default: 0] += line
+            } else {
+                unassigned += line
+            }
+        }
+        return (byMember, unassigned)
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -57,10 +72,9 @@ struct ItemSplitView: View {
                 }
 
                 Section("Per Person") {
+                    let totals = splitTotals
                     ForEach(groupMembers) { member in
-                        let total = receipt.items
-                            .filter { $0.assignedTo == member.id }
-                            .reduce(Decimal(0)) { $0 + $1.price + $1.taxPortion }
+                        let total = totals.byMember[member.id] ?? 0
                         if total > 0 {
                             HStack {
                                 Text(member.displayName)
@@ -73,14 +87,11 @@ struct ItemSplitView: View {
                             .listRowBackground(ChipInTheme.card)
                         }
                     }
-                    let unassignedTotal = receipt.items
-                        .filter { $0.assignedTo == nil }
-                        .reduce(Decimal(0)) { $0 + $1.price + $1.taxPortion }
-                    if unassignedTotal > 0 {
+                    if totals.unassigned > 0 {
                         HStack {
                             Text("Unassigned").foregroundStyle(ChipInTheme.secondaryLabel)
                             Spacer()
-                            Text(unassignedTotal, format: .currency(code: "CAD"))
+                            Text(totals.unassigned, format: .currency(code: "CAD"))
                                 .foregroundStyle(ChipInTheme.danger)
                         }
                         .listRowBackground(ChipInTheme.card)

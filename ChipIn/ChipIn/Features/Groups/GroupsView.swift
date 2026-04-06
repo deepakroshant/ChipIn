@@ -7,7 +7,18 @@ struct GroupsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            SwiftUI.Group {
+                if vm.groups.isEmpty {
+                    EmptyStateView(
+                        emoji: "🏕️",
+                        headline: "No groups yet",
+                        subheadline: "Create a group for your apartment, a trip, or any shared adventure.",
+                        actionLabel: "Create your first group",
+                        action: { showCreate = true }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
                 ForEach(vm.groups) { group in
                     NavigationLink(destination: GroupDetailView(group: group)) {
                         HStack(spacing: 14) {
@@ -31,12 +42,14 @@ struct GroupsView: View {
                     }
                     .listRowBackground(ChipInTheme.card)
                 }
+                    }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                }
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
             .background(ChipInTheme.background)
             .navigationTitle("Groups")
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

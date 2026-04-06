@@ -16,20 +16,31 @@ struct AuthView: View {
         ZStack {
             ChipInTheme.background.ignoresSafeArea()
 
+            Circle()
+                .fill(ChipInTheme.accent.opacity(0.2))
+                .frame(width: 280, height: 280)
+                .blur(radius: 80)
+                .offset(y: -180)
+                .allowsHitTesting(false)
+
             ScrollView {
                 VStack(spacing: 28) {
                     Spacer().frame(height: 52)
 
                     // Hero
                     VStack(spacing: 10) {
-                        Text("⚡️")
-                            .font(.system(size: 56))
+                        Image("ChipInLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 72, height: 72)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
                         Text("ChipIn")
                             .font(.system(size: 48, weight: .bold, design: .rounded))
                             .foregroundStyle(ChipInTheme.accentGradient)
                         Text(isSignUp ? "Create your account" : "Welcome back")
                             .font(.subheadline)
-                            .foregroundStyle(ChipInTheme.secondaryLabel)
+                            .foregroundStyle(ChipInTheme.onSurfaceVariant)
                             .animation(ChipInTheme.easeDefault, value: isSignUp)
                     }
 
@@ -96,7 +107,11 @@ struct AuthView: View {
                     }
                     .padding(20)
                     .background(ChipInTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ChipInTheme.squircleRadius, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
                     .padding(.horizontal, 24)
 
                     // Divider
@@ -145,17 +160,18 @@ struct AuthView: View {
     private var primaryButtonLabel: some View {
         ZStack {
             if isSigningIn {
-                ProgressView().tint(.black)
+                ProgressView().tint(ChipInTheme.onPrimary)
             } else {
                 Text(isSignUp ? "Create Account" : "Sign In")
                     .fontWeight(.semibold)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(ChipInTheme.onPrimary)
             }
         }
         .frame(maxWidth: .infinity)
         .frame(height: 52)
-        .background(ChipInTheme.accentGradient)
-        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+        .background(ChipInTheme.ctaGradient)
+        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius, style: .continuous))
+        .shadow(color: ChipInTheme.accent.opacity(0.25), radius: 10, y: 4)
     }
 
     // Map raw Supabase / network errors to Gen-Z friendly messages
@@ -260,10 +276,10 @@ private struct StyledTextField: View {
         .padding(14)
         .background(ChipInTheme.elevated)
         .foregroundStyle(ChipInTheme.label)
-        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius)
-                .stroke(ChipInTheme.elevated, lineWidth: 1)
+            RoundedRectangle(cornerRadius: ChipInTheme.cornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
     }
 }

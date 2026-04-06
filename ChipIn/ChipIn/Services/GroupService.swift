@@ -108,7 +108,7 @@ struct GroupService {
                 users.append(u)
             }
         }
-        users.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        users.sort { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
         return users
     }
 
@@ -137,6 +137,11 @@ struct GroupService {
         guard let user = try await findUserByEmail(email) else {
             throw GroupError.userNotFound
         }
+        return try await addMember(groupId: groupId, user: user)
+    }
+
+    /// Add someone who was found via search (name / @username / email).
+    func addMember(groupId: UUID, user: AppUser) async throws -> AppUser {
         let existing: [GroupMember] = try await supabase
             .from("group_members")
             .select()
@@ -179,6 +184,26 @@ struct GroupService {
             .from("users")
             .select()
             .in("id", values: members.map { $0.userId.uuidString })
+            .execute()
+            .value
+    }
+
+    /// Returns all unsettled splits for expenses in the given group.
+    func fetchGroupSplits(for groupId: UUID) async throws -> [ExpenseSplit] {
+        struct ExpenseIdOnly: Decodable { let id: UUID }
+        let expenseRows: [ExpenseIdOnly] = try await supabase
+            .from("expenses")
+            .select("id")
+            .eq("group_id", value: groupId.uuidString)
+            .execute()
+            .value
+        guard !expenseRows.isEmpty else { return [] }
+        let ids = expenseRows.map(\.id.uuidString)
+        return try await supabase
+            .from("expense_splits")
+            .select()
+            .in("expense_id", values: ids)
+            .eq("is_settled", value: false)
             .execute()
             .value
     }

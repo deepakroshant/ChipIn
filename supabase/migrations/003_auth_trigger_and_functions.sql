@@ -31,6 +31,7 @@ create trigger on_auth_user_created
 -- ============================================================
 -- 2. find_user_by_email — used by Add Expense friend lookup
 -- ============================================================
+drop function if exists public.find_user_by_email(text);
 create or replace function public.find_user_by_email(lookup_email text)
 returns table(id uuid, name text, email text)
 language sql

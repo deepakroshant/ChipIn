@@ -6,10 +6,14 @@ struct QuickAddView: View {
     @State private var amount = ""
     @State private var title = ""
     @State private var coMembers: [AppUser] = []
+    @State private var searchQuery = ""
+    @State private var searchResults: [AppUser] = []
+    @State private var isSearching = false
     @State private var selectedUserId: UUID?
     @State private var isSubmitting = false
     @State private var error: String?
     @FocusState private var amountFocused: Bool
+    @FocusState private var searchFocused: Bool
     private let groupService = GroupService()
     private let expenseService = ExpenseService()
 
@@ -17,8 +21,7 @@ struct QuickAddView: View {
         NavigationStack {
             ZStack {
                 ChipInTheme.background.ignoresSafeArea()
-                VStack(spacing: 24) {
-                    // Big amount input
+                VStack(spacing: 20) {
                     VStack(spacing: 4) {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("$")
@@ -41,19 +44,59 @@ struct QuickAddView: View {
                     }
                     .padding(.top, 8)
 
-                    // Person picker scroll
-                    if coMembers.isEmpty {
-                        Text("Add friends via Groups to quick-split")
-                            .font(.subheadline)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Who pays you back?")
+                            .font(.caption.uppercaseSmallCaps())
                             .foregroundStyle(ChipInTheme.tertiaryLabel)
-                            .multilineTextAlignment(.center)
                             .padding(.horizontal)
-                    } else {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Split with")
-                                .font(.caption.uppercaseSmallCaps())
+
+                        HStack(spacing: 10) {
+                            Image(systemName: "magnifyingglass")
                                 .foregroundStyle(ChipInTheme.tertiaryLabel)
+                            TextField("Name, @username, or email", text: $searchQuery)
+                                .focused($searchFocused)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .foregroundStyle(ChipInTheme.label)
+                                .onChange(of: searchQuery) { _, _ in
+                                    Task { await runSearch() }
+                                }
+                            if isSearching {
+                                ProgressView().tint(ChipInTheme.accent).scaleEffect(0.85)
+                            } else if !searchQuery.isEmpty {
+                                Button {
+                                    searchQuery = ""
+                                    searchResults = []
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(ChipInTheme.tertiaryLabel)
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background(ChipInTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.horizontal)
+
+                        if !searchResults.isEmpty {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("Search results")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(ChipInTheme.onSurfaceVariant)
+                                    .padding(.horizontal)
+                                    .padding(.bottom, 6)
+                                ForEach(searchResults) { user in
+                                    searchResultRow(user)
+                                }
+                            }
+                        }
+
+                        if !coMembers.isEmpty {
+                            Text("From your groups")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(ChipInTheme.onSurfaceVariant)
                                 .padding(.horizontal)
+                                .padding(.top, searchResults.isEmpty ? 0 : 8)
 
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 14) {
@@ -66,6 +109,14 @@ struct QuickAddView: View {
                         }
                     }
 
+                    if coMembers.isEmpty, searchQuery.count < 2, searchResults.isEmpty {
+                        Text("Search any ChipIn user for a direct 1:1 split. People from your groups also appear as shortcuts when you’re in groups.")
+                            .font(.subheadline)
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
                     if let error {
                         Text(error)
                             .font(.caption)
@@ -75,7 +126,6 @@ struct QuickAddView: View {
 
                     Spacer()
 
-                    // Save button
                     Button {
                         Task { await save() }
                     } label: {
@@ -100,9 +150,9 @@ struct QuickAddView: View {
                         .foregroundStyle(ChipInTheme.secondaryLabel)
                 }
             }
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .task { await loadMembers() }
+            .task { await loadGroupShortcuts() }
             .onAppear { amountFocused = true }
         }
     }
@@ -110,29 +160,67 @@ struct QuickAddView: View {
     @ViewBuilder
     private var splitButtonLabel: some View {
         if isSubmitting {
-            ProgressView().tint(.black)
+            ProgressView().tint(ChipInTheme.onPrimary)
                 .frame(maxWidth: .infinity)
                 .padding()
         } else {
             Text("Split It  ⚡️")
                 .font(.headline)
-                .foregroundStyle(.black)
+                .foregroundStyle(ChipInTheme.onPrimary)
                 .frame(maxWidth: .infinity)
                 .padding()
         }
     }
 
     @ViewBuilder
+    private func searchResultRow(_ user: AppUser) -> some View {
+        let selected = selectedUserId == user.id
+        Button {
+            selectedUserId = user.id
+            searchFocused = false
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            HStack(spacing: 12) {
+                Text(String(user.displayName.prefix(1)).uppercased())
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(ChipInTheme.avatarColor(for: user.id.uuidString))
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(user.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ChipInTheme.label)
+                    Text(user.handle)
+                        .font(.caption)
+                        .foregroundStyle(ChipInTheme.tertiaryLabel)
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(ChipInTheme.accent)
+                }
+            }
+            .padding(12)
+            .background(selected ? ChipInTheme.elevated : ChipInTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
     private func personChip(user: AppUser) -> some View {
         let selected = selectedUserId == user.id
-        let name = user.name
+        let dname = user.displayName
+        let colorKey = user.id.uuidString
         VStack(spacing: 6) {
             ZStack {
                 Circle()
                     .fill(
                         selected
                             ? AnyShapeStyle(LinearGradient(
-                                colors: [ChipInTheme.avatarColor(for: name), ChipInTheme.avatarColor(for: name).opacity(0.6)],
+                                colors: [ChipInTheme.avatarColor(for: colorKey), ChipInTheme.avatarColor(for: colorKey).opacity(0.6)],
                                 startPoint: .topLeading, endPoint: .bottomTrailing))
                             : AnyShapeStyle(ChipInTheme.card)
                     )
@@ -140,14 +228,14 @@ struct QuickAddView: View {
                     .overlay(
                         Circle().stroke(selected ? ChipInTheme.accent : Color.clear, lineWidth: 2)
                     )
-                Text(String(name.prefix(1)).uppercased())
+                Text(String(dname.prefix(1)).uppercased())
                     .font(.headline.bold())
                     .foregroundStyle(selected ? .white : ChipInTheme.secondaryLabel)
             }
             .scaleEffect(selected ? 1.08 : 1.0)
             .animation(ChipInTheme.spring, value: selected)
 
-            Text(name.components(separatedBy: " ").first ?? name)
+            Text(dname.components(separatedBy: " ").first ?? dname)
                 .font(.caption2)
                 .foregroundStyle(selected ? ChipInTheme.accent : ChipInTheme.tertiaryLabel)
         }
@@ -157,9 +245,24 @@ struct QuickAddView: View {
         }
     }
 
-    private func loadMembers() async {
+    private func loadGroupShortcuts() async {
         guard let id = auth.currentUser?.id else { return }
         coMembers = (try? await groupService.fetchCoMembers(excludingSelf: id)) ?? []
+    }
+
+    private func runSearch() async {
+        let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            searchResults = []
+            return
+        }
+        isSearching = true
+        defer { isSearching = false }
+        var found = (try? await groupService.searchUsers(trimmed)) ?? []
+        if let me = auth.currentUser?.id {
+            found.removeAll { $0.id == me }
+        }
+        searchResults = found
     }
 
     private func save() async {
@@ -185,6 +288,12 @@ struct QuickAddView: View {
                 splits: splits,
                 isRecurring: false,
                 recurrenceInterval: nil
+            )
+            ToastManager.shared.markLocalSave()
+            NotificationCenter.default.post(
+                name: .chipInToast,
+                object: nil,
+                userInfo: ["message": "Expense saved"]
             )
             SoundService.shared.play(.expenseAdd, haptic: .light)
             NotificationCenter.default.post(name: .dataDidUpdate, object: nil)

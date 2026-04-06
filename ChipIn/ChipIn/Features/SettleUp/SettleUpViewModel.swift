@@ -21,6 +21,12 @@ class SettleUpViewModel {
         defer { isLoading = false }
         do {
             try await service.settle(fromUserId: fromUserId, toUserId: toUserId, amount: amount, groupId: groupId, method: "interac")
+            ToastManager.shared.markLocalSave()
+            NotificationCenter.default.post(
+                name: .chipInToast,
+                object: nil,
+                userInfo: ["message": "Marked as settled"]
+            )
             SoundService.shared.play(.settled, haptic: .heavy)
             NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
             isSettled = true

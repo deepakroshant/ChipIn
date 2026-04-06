@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile — Emerald Obsidian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Manrope', 'system-ui', 'sans-serif'] },
+          colors: {
+            'primary-container': '#ff8c42',
+            primary: '#ffb68d',
+            secondary: '#4edea3',
+            'secondary-container': '#00a572',
+            tertiary: '#ffb95f',
+            'tertiary-container': '#ed9800',
+            background: '#131315',
+            surface: '#131315',
+            'surface-dim': '#131315',
+            'surface-container-lowest': '#0e0e10',
+            'surface-container-low': '#1b1b1d',
+            'surface-container': '#201f21',
+            'surface-container-high': '#2a2a2c',
+            'surface-container-highest': '#353437',
+            'surface-variant': '#353437',
+            'surface-bright': '#39393b',
+            'on-surface': '#e5e1e4',
+            'on-surface-variant': '#ddc1b3',
+            'on-background': '#e5e1e4',
+            'on-primary': '#532200',
+            'on-primary-container': '#6a2d00',
+            'on-secondary': '#003824',
+            'on-secondary-container': '#00311f',
+            'on-tertiary': '#472a00',
+            outline: '#a48c7f',
+            'outline-variant': '#564338',
+            error: '#ffb4ab',
+            'error-container': '#93000a',
+            'on-error': '#690005',
+            'on-error-container': '#ffdad6',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* Impact ring: conic gradient fill ~92% (Top 5% tier) */
+    .impact-ring {
+      --ring-fill: 331deg;
+      width: 8.75rem;
+      height: 8.75rem;
+      border-radius: 9999px;
+      background: conic-gradient(
+        from -90deg,
+        #4edea3 0deg,
+        #00a572 var(--ring-fill),
+        #2a2a2c var(--ring-fill),
+        #2a2a2c 360deg
+      );
+      padding: 0.5rem;
+      box-shadow: 0 0 0 1px rgba(78, 222, 163, 0.15);
+    }
+    .impact-ring__inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 9999px;
+      background: #201f21;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.125rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-surface-container-lowest font-sans text-on-surface antialiased pb-24">
+  <header class="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-container-lowest/95 backdrop-blur-md">
+    <div class="mx-auto flex max-w-md items-center justify-between px-4 py-3">
+      <button type="button" class="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high" aria-label="Back">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <h1 class="text-base font-semibold tracking-tight text-on-surface">Profile</h1>
+      <button type="button" class="rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high" aria-label="Settings">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-md px-4 pt-6">
+    <!-- Hero: Impact + identity -->
+    <section class="flex flex-col items-center text-center">
+      <p class="mb-3 text-xs font-medium uppercase tracking-widest text-secondary">Impact score</p>
+      <div class="impact-ring mb-5">
+        <div class="impact-ring__inner">
+          <span class="text-3xl font-extrabold tracking-tight text-on-surface">842</span>
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-secondary">Top 5%</span>
+        </div>
+      </div>
+      <h2 class="text-xl font-bold text-on-surface">Alexander Vance</h2>
+      <p class="mt-1 text-sm text-on-surface-variant">Joined <time datetime="2024-03-12">March 12, 2024</time></p>
+    </section>
+
+    <!-- Security -->
+    <section class="mt-10">
+      <h3 class="mb-3 px-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Security</h3>
+      <div class="overflow-hidden rounded-2xl border border-outline-variant/25 bg-surface-container">
+        <a href="#" class="flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-container-high/60">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary-container/30 text-secondary">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </span>
+          <div class="min-w-0 flex-1 text-left">
+            <p class="font-semibold text-on-surface">Two-factor authentication</p>
+            <p class="text-sm text-on-surface-variant">Extra protection for your account</p>
+          </div>
+          <span class="shrink-0 rounded-full bg-secondary/20 px-2.5 py-1 text-xs font-semibold text-secondary">On</span>
+          <svg class="h-5 w-5 shrink-0 text-outline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- Interac -->
+    <section class="mt-8">
+      <h3 class="mb-3 px-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Interac</h3>
+      <div class="overflow-hidden rounded-2xl border border-outline-variant/25 bg-surface-container">
+        <a href="#" class="flex items-center gap-4 border-b border-outline-variant/20 px-4 py-4 transition-colors hover:bg-surface-container-high/60">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-container/20 text-primary">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          </span>
+          <div class="min-w-0 flex-1 text-left">
+            <p class="font-semibold text-on-surface">Linked bank &amp; e-Transfer</p>
+            <p class="text-sm text-on-surface-variant">Default deposit account</p>
+          </div>
+          <svg class="h-5 w-5 shrink-0 text-outline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#" class="flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-container-high/60">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-tertiary-container/25 text-tertiary">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </span>
+          <div class="min-w-0 flex-1 text-left">
+            <p class="font-semibold text-on-surface">Auto-deposit email</p>
+            <p class="truncate text-sm text-on-surface-variant">alex.vance@email.com</p>
+          </div>
+          <svg class="h-5 w-5 shrink-0 text-outline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- Social -->
+    <section class="mt-8">
+      <h3 class="mb-3 px-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Social</h3>
+      <div class="flex items-center justify-between rounded-2xl border border-outline-variant/25 bg-surface-container px-4 py-4">
+        <div class="flex items-center gap-3">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-high text-on-surface-variant">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </span>
+          <div>
+            <p class="font-semibold text-on-surface">Discoverable profile</p>
+            <p class="text-sm text-on-surface-variant">Let friends find you by phone</p>
+          </div>
+        </div>
+        <button type="button" role="switch" aria-checked="true" class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full bg-secondary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-container-lowest">
+          <span class="pointer-events-none absolute right-0.5 top-0.5 h-6 w-6 rounded-full bg-on-surface shadow"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Vaults / Archive grid -->
+    <section class="mt-8">
+      <h3 class="mb-3 px-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Vaults &amp; archive</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <a href="#" class="group flex flex-col rounded-2xl border border-outline-variant/25 bg-surface-container p-4 transition-colors hover:border-secondary/40 hover:bg-surface-container-high/50">
+          <span class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-secondary-container/35 text-secondary">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+          </span>
+          <p class="font-semibold text-on-surface">Vaults</p>
+          <p class="mt-0.5 text-xs text-on-surface-variant">3 active spaces</p>
+        </a>
+        <a href="#" class="group flex flex-col rounded-2xl border border-outline-variant/25 bg-surface-container p-4 transition-colors hover:border-outline/50 hover:bg-surface-container-high/50">
+          <span class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-highest text-on-surface-variant">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-4 4h.01"/></svg>
+          </span>
+          <p class="font-semibold text-on-surface">Archive</p>
+          <p class="mt-0.5 text-xs text-on-surface-variant">Settled groups</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- Log out -->
+    <section class="mt-10 pb-4">
+      <button type="button" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-error-container py-3.5 text-sm font-bold text-error transition-opacity hover:opacity-90 active:opacity-80">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Log out
+      </button>
+    </section>
+  </main>
+
+  <!-- Bottom nav: Profile active -->
+  <nav class="fixed bottom-0 left-0 right-0 z-20 border-t border-outline-variant/30 bg-surface-container-lowest/95 backdrop-blur-md" aria-label="Primary">
+    <div class="mx-auto flex max-w-md items-stretch justify-around px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <a href="#" class="flex flex-1 flex-col items-center gap-1 py-1 text-on-surface-variant hover:text-on-surface">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span class="text-[10px] font-medium">Home</span>
+      </a>
+      <a href="#" class="flex flex-1 flex-col items-center gap-1 py-1 text-on-surface-variant hover:text-on-surface">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="text-[10px] font-medium">Groups</span>
+      </a>
+      <a href="#" class="flex flex-1 flex-col items-center gap-1 py-1 text-on-surface-variant hover:text-on-surface">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
+        <span class="text-[10px] font-medium">Activity</span>
+      </a>
+      <a href="04-profile.html" class="flex flex-1 flex-col items-center gap-1 py-1 text-secondary" aria-current="page">
+        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd"/></svg>
+        <span class="text-[10px] font-semibold">Profile</span>
+      </a>
+    </div>
+  </nav>
+</body>
+</html>

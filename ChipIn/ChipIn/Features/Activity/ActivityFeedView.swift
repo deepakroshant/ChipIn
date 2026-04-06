@@ -10,7 +10,13 @@ struct ActivityFeedView: View {
                 ChipInTheme.background.ignoresSafeArea()
 
                 if vm.isLoading && vm.items.isEmpty {
-                    ProgressView().tint(ChipInTheme.accent)
+                    VStack(spacing: 0) {
+                        ForEach(0..<6, id: \.self) { _ in
+                            ActivityRowSkeleton()
+                            Divider().background(ChipInTheme.elevated).padding(.leading, 68)
+                        }
+                    }
+                    .padding(.top, 8)
                 } else if vm.items.isEmpty {
                     emptyState
                 } else {
@@ -33,6 +39,7 @@ struct ActivityFeedView: View {
                 }
             }
             .navigationTitle("Activity")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -48,21 +55,16 @@ struct ActivityFeedView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Text("📭").font(.system(size: 48))
-            Text("Nothing yet")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(ChipInTheme.label)
-            Text("When friends add expenses you're included in or settle up, they'll appear here.")
-                .font(.subheadline)
-                .foregroundStyle(ChipInTheme.secondaryLabel)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-        }
+        EmptyStateView(
+            emoji: "🌊",
+            headline: "Your feed is quiet",
+            subheadline: "Add an expense or settle up with a friend — it'll show up here for everyone involved."
+        )
     }
 }
 
 private struct ActivityRow: View {
+    @Environment(AuthManager.self) private var auth
     let item: ActivityItem
 
     var body: some View {
@@ -98,16 +100,35 @@ private struct ActivityRow: View {
 
     private var rowTitle: String {
         switch item.kind {
-        case .expenseAdded(let e): return "\(item.actorName) added \u{201C}\(e.title)\u{201D}"
-        case .settled: return "\(item.actorName) settled up"
+        case .expenseAdded(let e):
+            let who = isYou(item.actorId) ? "You" : item.actorName
+            return "\(who) added \u{201C}\(e.title)\u{201D}"
+        case .settled(let s):
+            let peer = item.peerName ?? "Someone"
+            if isYou(s.fromUserId) {
+                return "You settled with \(peer)"
+            }
+            if isYou(s.toUserId) {
+                return "\(item.actorName) settled with you"
+            }
+            return "\(item.actorName) settled with \(peer)"
         }
     }
 
     private var rowSubtitle: String {
         switch item.kind {
-        case .expenseAdded: return "You're included in this expense"
+        case .expenseAdded(let e):
+            if isYou(e.paidBy) {
+                return "Paid by you · others owe their share"
+            }
+            return "You're in this split"
         case .settled: return "Payment marked complete"
         }
+    }
+
+    private func isYou(_ id: UUID) -> Bool {
+        guard let uid = auth.currentUser?.id else { return false }
+        return uid == id
     }
 
     private var rowAmount: String {

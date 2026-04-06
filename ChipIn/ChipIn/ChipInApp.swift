@@ -6,17 +6,33 @@ struct ChipInApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var auth = AuthManager()
     @State private var biometric = BiometricManager()
-    @State private var onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
+    @AppStorage("onboardingComplete") private var onboardingComplete = false
+    @AppStorage("forceDarkMode") private var forceDark = true
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
+    /// Binds SwiftUI to accent changes from Profile so `ChipInTheme.accent` refreshes everywhere.
+    @AppStorage("accentColor") private var accentColorHex = "#F97316"
 
     init() {
-        UserDefaults.standard.register(defaults: ["soundEnabled": true])
+        UserDefaults.standard.register(defaults: [
+            "soundEnabled": true,
+            "pushCustomSoundEnabled": true,
+            "forceDarkMode": true,
+            "biometricEnabled": false,
+            "hideBalances": false,
+            "onboardingComplete": false,
+            "accentColor": "#F97316",
+        ])
         ChipInNavigationAppearance.apply()
     }
 
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if biometric.isEnabled && !biometric.isUnlocked {
+                Text(verbatim: accentColorHex)
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+                if biometricEnabled && !biometric.isUnlocked {
                     lockScreen
                 } else {
                     SwiftUI.Group {
@@ -40,11 +56,21 @@ struct ChipInApp: App {
                     .environment(auth)
                 }
             }
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(forceDark ? .dark : nil)
+            .onChange(of: accentColorHex) { _, _ in
+                ChipInNavigationAppearance.apply()
+            }
             .task { await auth.initialize() }
-            .task { await biometric.authenticate() }
+            .onChange(of: biometricEnabled) { _, enabled in
+                biometric.isUnlocked = !enabled
+            }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                if biometric.isEnabled { biometric.isUnlocked = false }
+                if biometricEnabled { biometric.isUnlocked = false }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                if biometricEnabled && !biometric.isUnlocked {
+                    Task { await biometric.authenticate() }
+                }
             }
             .onOpenURL { url in
                 guard url.scheme == "chipin",
@@ -62,7 +88,7 @@ struct ChipInApp: App {
                         .single()
                         .execute()
                         .value else { return }
-                    try? await supabase.from("group_members").insert([
+                    _ = try? await supabase.from("group_members").insert([
                         "group_id": invite.group_id.uuidString,
                         "user_id": userId.uuidString,
                         "role": "member"
@@ -77,22 +103,30 @@ struct ChipInApp: App {
         ZStack {
             ChipInTheme.background.ignoresSafeArea()
             VStack(spacing: 24) {
-                Text("⚡️").font(.system(size: 64))
+                Image("ChipInLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 88, height: 88)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
                 Text("ChipIn").font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(ChipInTheme.accent)
                 Button {
                     Task { await biometric.authenticate() }
                 } label: {
-                    Label("Unlock with Face ID", systemImage: "faceid")
+                    Label(biometric.unlockButtonTitle(), systemImage: "lock.open.fill")
                         .frame(maxWidth: .infinity).padding()
-                        .background(ChipInTheme.accent)
-                        .foregroundStyle(.black).fontWeight(.semibold)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .background(ChipInTheme.ctaGradient)
+                        .foregroundStyle(ChipInTheme.onPrimary).fontWeight(.semibold)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .padding(.horizontal, 40)
                 if let err = biometric.error {
                     Text(err).font(.caption).foregroundStyle(ChipInTheme.danger)
                 }
+            }
+            .onAppear {
+                Task { await biometric.authenticate() }
             }
         }
     }

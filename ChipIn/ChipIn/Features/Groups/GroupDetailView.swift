@@ -1,6 +1,52 @@
 import SwiftUI
 import Supabase
 
+private struct GroupMemberBalance: Identifiable {
+    var id: String { "\(payer.id.uuidString)-\(payee.id.uuidString)" }
+    let payer: AppUser
+    let payee: AppUser
+    let amount: Decimal
+}
+
+private func computeGroupBalances(
+    expenses: [Expense],
+    splits: [ExpenseSplit],
+    members: [AppUser]
+) -> [GroupMemberBalance] {
+    let memberMap = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
+    var net: [UUID: Decimal] = [:]
+    for split in splits {
+        guard let expense = expenses.first(where: { $0.id == split.expenseId }) else { continue }
+        let paidBy = expense.paidBy
+        let debtor = split.userId
+        if debtor == paidBy { continue }
+        net[paidBy, default: 0] += split.owedAmount
+        net[debtor, default: 0] -= split.owedAmount
+    }
+
+    var creditors = net.filter { $0.value > 0 }.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }
+    var debtors = net.filter { $0.value < 0 }.map { ($0.key, abs($0.value)) }.sorted { $0.1 > $1.1 }
+    var result: [GroupMemberBalance] = []
+
+    var ci = 0
+    var di = 0
+    while ci < creditors.count && di < debtors.count {
+        var creditor = creditors[ci]
+        var debtor = debtors[di]
+        let settled = min(creditor.1, debtor.1)
+        if let payerUser = memberMap[debtor.0], let payeeUser = memberMap[creditor.0] {
+            result.append(GroupMemberBalance(payer: payerUser, payee: payeeUser, amount: settled))
+        }
+        creditor.1 -= settled
+        debtor.1 -= settled
+        creditors[ci] = creditor
+        debtors[di] = debtor
+        if creditor.1 == 0 { ci += 1 }
+        if debtor.1 == 0 { di += 1 }
+    }
+    return result
+}
+
 struct GroupDetailView: View {
     let group: Group
     @Environment(AuthManager.self) var auth
@@ -20,6 +66,11 @@ struct GroupDetailView: View {
     @State private var isGeneratingLink = false
     @State private var showBudget = false
     @State private var showLeaderboard = false
+    @State private var groupSplits: [ExpenseSplit] = []
+
+    private var memberBalances: [GroupMemberBalance] {
+        computeGroupBalances(expenses: expenses, splits: groupSplits, members: members)
+    }
 
     var body: some View {
         List {
@@ -80,6 +131,30 @@ struct GroupDetailView: View {
                 .listRowBackground(ChipInTheme.card)
             } header: {
                 Text("Members (\(members.count))")
+            }
+
+            if !memberBalances.isEmpty {
+                Section("Balances") {
+                    ForEach(memberBalances) { b in
+                        HStack(spacing: 12) {
+                            Text(String(b.payer.displayName.prefix(1)).uppercased())
+                                .font(.caption.bold()).foregroundStyle(.white)
+                                .frame(width: 30, height: 30)
+                                .background(ChipInTheme.avatarColor(for: b.payer.id.uuidString))
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(b.payer.displayName) owes \(b.payee.displayName)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(ChipInTheme.label)
+                            }
+                            Spacer()
+                            Text(b.amount, format: .currency(code: "CAD"))
+                                .font(.subheadline.bold())
+                                .foregroundStyle(ChipInTheme.danger)
+                        }
+                        .listRowBackground(ChipInTheme.card)
+                    }
+                }
             }
 
             // Expenses section
@@ -298,8 +373,10 @@ struct GroupDetailView: View {
     private func loadAll() async {
         async let expensesTask = service.fetchExpenses(for: group.id)
         async let membersTask = service.fetchMembers(for: group.id)
+        async let splitsTask = service.fetchGroupSplits(for: group.id)
         expenses = (try? await expensesTask) ?? []
         members = (try? await membersTask) ?? []
+        groupSplits = (try? await splitsTask) ?? []
     }
 
     private func searchMembersForGroup() async {

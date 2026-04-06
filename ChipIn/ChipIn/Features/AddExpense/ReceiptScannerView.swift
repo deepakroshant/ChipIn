@@ -35,8 +35,11 @@ struct ReceiptScannerView: View {
                 }
             }
             .fullScreenCover(isPresented: $showCamera) {
-                CameraPicker(image: $cameraImage)
-                    .ignoresSafeArea()
+                ZStack {
+                    CameraPicker(image: $cameraImage)
+                    CameraGuideOverlay()
+                }
+                .ignoresSafeArea()
             }
             .onChange(of: cameraImage) { _, img in
                 guard let img else { return }
@@ -109,10 +112,6 @@ struct ReceiptScannerView: View {
 
             actionButtons
 
-#if DEBUG
-            debugTestReceiptButton
-#endif
-
             if let error = errorMessage {
                 VStack(spacing: 12) {
                     Text(error)
@@ -178,49 +177,6 @@ struct ReceiptScannerView: View {
                 .padding(.horizontal, 28)
         }
     }
-
-#if DEBUG
-    private var debugTestReceiptButton: some View {
-        VStack(spacing: 8) {
-            Text("Debug test receipts")
-                .font(.caption2)
-                .foregroundStyle(ChipInTheme.tertiaryLabel)
-            HStack(spacing: 12) {
-                Button {
-                    Task { await processTestReceiptImage(style: .cafe) }
-                } label: {
-                    Text("☕ Café")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(ChipInTheme.accent)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background(ChipInTheme.card)
-                        .clipShape(Capsule())
-                }
-                Button {
-                    Task { await processTestReceiptImage(style: .restaurant) }
-                } label: {
-                    Text("🍽 Restaurant")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(ChipInTheme.accent)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background(ChipInTheme.card)
-                        .clipShape(Capsule())
-                }
-                Button {
-                    Task { await processTestReceiptImage(style: .grocery) }
-                } label: {
-                    Text("🛒 Grocery")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(ChipInTheme.accent)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background(ChipInTheme.card)
-                        .clipShape(Capsule())
-                }
-            }
-        }
-        .padding(.top, 4)
-    }
-#endif
 
     private var actionButtons: some View {
         VStack(spacing: 12) {
@@ -308,132 +264,4 @@ struct ReceiptScannerView: View {
             showCamera = true
         }
     }
-
-#if DEBUG
-    enum TestReceiptStyle { case cafe, restaurant, grocery }
-
-    @MainActor
-    private func processTestReceiptImage(style: TestReceiptStyle = .cafe) async {
-        let height: CGFloat = style == .grocery ? 600 : 480
-        let content: AnyView
-        switch style {
-        case .cafe:
-            content = AnyView(ReceiptSyntheticTestView())
-        case .restaurant:
-            content = AnyView(RestaurantReceiptTestView())
-        case .grocery:
-            content = AnyView(GroceryReceiptTestView())
-        }
-        let sized = content.frame(width: 340, height: height).background(Color.white)
-        let renderer = ImageRenderer(content: sized)
-        renderer.scale = 3
-        renderer.proposedSize = ProposedViewSize(width: 340, height: height)
-        guard let uiImage = renderer.uiImage else {
-            errorMessage = "Debug: couldn't render test receipt image."
-            return
-        }
-        await processImage(uiImage.chipInOpaqueOnWhite())
-    }
-#endif
 }
-
-#if DEBUG
-/// Café receipt — simple 2-item receipt used as the baseline test.
-private struct ReceiptSyntheticTestView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("CHIPIN TEST MART")
-                .font(.title2.bold())
-            Text("123 Demo Street")
-                .font(.caption)
-            Divider()
-            HStack {
-                Text("Coffee"); Spacer(); Text("$4.50")
-            }
-            .font(.body)
-            HStack {
-                Text("Sandwich"); Spacer(); Text("$8.25")
-            }
-            .font(.body)
-            Divider()
-            HStack {
-                Text("Subtotal"); Spacer(); Text("$12.75")
-            }
-            .font(.body)
-            HStack {
-                Text("Tax"); Spacer(); Text("$0.64")
-            }
-            .font(.caption)
-            HStack {
-                Text("TOTAL"); Spacer(); Text("$13.39")
-            }
-            .font(.headline)
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .foregroundStyle(.black)
-        .background(Color.white)
-    }
-}
-
-/// Restaurant receipt — multiple items, tip, quantity line.
-private struct RestaurantReceiptTestView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("THE GOLDEN FORK").font(.title2.bold())
-            Text("45 King St W, Toronto ON").font(.caption)
-            Text("Table 12  Server: Alex  Guests: 4").font(.caption)
-            Divider()
-            HStack { Text("2x Pasta Carbonara"); Spacer(); Text("$34.00") }.font(.body)
-            HStack { Text("Margherita Pizza"); Spacer(); Text("$19.50") }.font(.body)
-            HStack { Text("Caesar Salad"); Spacer(); Text("$12.00") }.font(.body)
-            HStack { Text("1x Sparkling Water"); Spacer(); Text("$4.00") }.font(.body)
-            HStack { Text("House Red Wine"); Spacer(); Text("$28.00") }.font(.body)
-            HStack { Text("Tiramisu"); Spacer(); Text("$9.75") }.font(.body)
-            Divider()
-            HStack { Text("Subtotal"); Spacer(); Text("$107.25") }.font(.body)
-            HStack { Text("HST (13%)"); Spacer(); Text("$13.94") }.font(.caption)
-            HStack { Text("Tip (18%)"); Spacer(); Text("$19.31") }.font(.caption)
-            Divider()
-            HStack { Text("TOTAL"); Spacer(); Text("$140.50") }.font(.headline)
-            Text("Thank you for dining with us!").font(.caption2).frame(maxWidth: .infinity, alignment: .center)
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .foregroundStyle(.black)
-        .background(Color.white)
-    }
-}
-
-/// Grocery receipt — many items, quantity × price format, no tip.
-private struct GroceryReceiptTestView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("FRESHMART GROCERY").font(.title2.bold())
-            Text("290 Bloor St, Toronto ON").font(.caption)
-            Text("Cashier: 04  Receipt #88412").font(.caption)
-            Divider()
-            HStack { Text("Whole Milk 2L"); Spacer(); Text("$4.29") }.font(.body)
-            HStack { Text("2x Greek Yogurt"); Spacer(); Text("$7.98") }.font(.body)
-            HStack { Text("Sourdough Bread"); Spacer(); Text("$5.49") }.font(.body)
-            HStack { Text("3x Banana"); Spacer(); Text("$1.47") }.font(.body)
-            HStack { Text("Chicken Breast 1.2kg"); Spacer(); Text("$13.68") }.font(.body)
-            HStack { Text("Pasta 500g"); Spacer(); Text("$2.99") }.font(.body)
-            HStack { Text("Tomato Sauce"); Spacer(); Text("$3.49") }.font(.body)
-            HStack { Text("Cheddar Cheese"); Spacer(); Text("$6.79") }.font(.body)
-            HStack { Text("Orange Juice 1L"); Spacer(); Text("$4.99") }.font(.body)
-            HStack { Text("2x Sparkling Water"); Spacer(); Text("$3.98") }.font(.body)
-            Divider()
-            HStack { Text("Subtotal"); Spacer(); Text("$55.15") }.font(.body)
-            HStack { Text("Tax"); Spacer(); Text("$0.00") }.font(.caption)
-            Divider()
-            HStack { Text("TOTAL"); Spacer(); Text("$55.15") }.font(.headline)
-            Text("Points earned: 55").font(.caption2).frame(maxWidth: .infinity, alignment: .center)
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .foregroundStyle(.black)
-        .background(Color.white)
-    }
-}
-#endif

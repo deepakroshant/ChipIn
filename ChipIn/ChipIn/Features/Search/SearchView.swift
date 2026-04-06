@@ -8,6 +8,8 @@ struct SearchView: View {
     @State private var isSearching = false
     @FocusState private var focused: Bool
 
+    private var trimmedQuery: String { query.trimmingCharacters(in: .whitespaces) }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -30,15 +32,26 @@ struct SearchView: View {
                     }
                     .padding(12)
                     .background(ChipInTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                    )
                     .padding()
 
-                    if results.isEmpty && !query.isEmpty && !isSearching {
-                        VStack(spacing: 12) {
-                            Text("🔍").font(.system(size: 40))
-                            Text("No expenses found for \"\(query)\"")
-                                .foregroundStyle(ChipInTheme.secondaryLabel)
-                        }
+                    if trimmedQuery.count < 2 && !isSearching {
+                        EmptyStateView(
+                            emoji: "🔍",
+                            headline: "Search your expenses",
+                            subheadline: "Find any expense by title or category."
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if trimmedQuery.count >= 2 && results.isEmpty && !isSearching {
+                        EmptyStateView(
+                            emoji: "🔍",
+                            headline: "Nothing found",
+                            subheadline: "Try a different spelling or date range."
+                        )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         List(results) { expense in
@@ -52,7 +65,7 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("Search")
-            .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+            .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .onAppear { focused = true }
         }

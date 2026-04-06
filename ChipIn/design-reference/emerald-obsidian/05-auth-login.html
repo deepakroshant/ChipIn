@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in — ChipIn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Manrope", "system-ui", "sans-serif"],
+            },
+            colors: {
+              "m-surface": "#121212",
+              "m-surface-low": "#1d1b20",
+              "m-outline": "#938f99",
+              "chipin-orange": "#ff8c42",
+            },
+            borderRadius: {
+              squircle: "1.25rem",
+            },
+            boxShadow: {
+              orb: "0 0 80px 40px rgba(16, 185, 129, 0.12)",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .bg-mesh {
+        background-color: #0a0a0b;
+        background-image:
+          radial-gradient(ellipse 90% 70% at 50% -20%, rgba(16, 185, 129, 0.18), transparent 55%),
+          radial-gradient(ellipse 60% 50% at 100% 50%, rgba(99, 102, 241, 0.08), transparent 50%),
+          radial-gradient(ellipse 50% 40% at 0% 80%, rgba(255, 140, 66, 0.06), transparent 45%);
+      }
+    </style>
+  </head>
+  <body
+    class="font-sans antialiased min-h-full bg-mesh text-[#e6e1e5] dark"
+  >
+    <!-- Ambient blur orbs -->
+    <div
+      class="pointer-events-none fixed inset-0 overflow-hidden"
+      aria-hidden="true"
+    >
+      <div
+        class="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-500/20 blur-[100px]"
+      ></div>
+      <div
+        class="absolute bottom-0 right-[-10%] h-80 w-80 rounded-full bg-indigo-500/15 blur-[110px]"
+      ></div>
+      <div
+        class="absolute bottom-1/4 left-[-5%] h-64 w-64 rounded-full bg-[#ff8c42]/10 blur-[90px]"
+      ></div>
+    </div>
+
+    <main
+      class="relative z-10 flex min-h-full flex-col items-center justify-center px-5 py-12"
+    >
+      <div class="w-full max-w-sm">
+        <!-- Logo squircle -->
+        <div class="mb-8 flex flex-col items-center text-center">
+          <div
+            class="mb-5 flex h-16 w-16 items-center justify-center rounded-squircle bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-800 shadow-lg shadow-emerald-900/40 ring-1 ring-white/10"
+            aria-hidden="true"
+          >
+            <svg
+              class="h-8 w-8 text-white drop-shadow-sm"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient
+                  id="wallet-shine"
+                  x1="4"
+                  y1="4"
+                  x2="20"
+                  y2="20"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop stop-color="#fff" stop-opacity="0.35" />
+                  <stop offset="1" stop-color="#fff" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M4 8.5C4 6.567 5.567 5 7.5 5h9C18.433 5 20 6.567 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-9Z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                fill="currentColor"
+                fill-opacity="0.15"
+              />
+              <path
+                d="M4 8.5C4 6.567 5.567 5 7.5 5h9C18.433 5 20 6.567 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-9Z"
+                stroke="url(#wallet-shine)"
+                stroke-width="1.5"
+                fill="none"
+              />
+              <rect
+                x="13"
+                y="11"
+                width="5"
+                height="3.5"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.25"
+                fill="none"
+              />
+            </svg>
+          </div>
+          <h1 class="text-3xl font-bold tracking-tight text-[#ff8c42]">
+            ChipIn
+          </h1>
+          <p class="mt-2 text-base font-medium text-[#cac4d0]">
+            Welcome back
+          </p>
+        </div>
+
+        <form class="space-y-4" action="#" method="post">
+          <div>
+            <label
+              for="email"
+              class="mb-1.5 block text-sm font-medium text-[#cac4d0]"
+              >Email</label
+            >
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              class="w-full rounded-squircle border border-white/10 bg-m-surface-low px-4 py-3.5 text-[#e6e1e5] placeholder:text-[#938f99]/80 outline-none ring-0 transition focus:border-[#ff8c42]/50 focus:ring-2 focus:ring-[#ff8c42]/25"
+            />
+          </div>
+          <div>
+            <label
+              for="password"
+              class="mb-1.5 block text-sm font-medium text-[#cac4d0]"
+              >Password</label
+            >
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="w-full rounded-squircle border border-white/10 bg-m-surface-low px-4 py-3.5 text-[#e6e1e5] placeholder:text-[#938f99]/80 outline-none ring-0 transition focus:border-[#ff8c42]/50 focus:ring-2 focus:ring-[#ff8c42]/25"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="mt-2 w-full rounded-squircle bg-gradient-to-r from-[#ff8c42] via-[#ff9d5c] to-[#e6732a] py-3.5 text-center text-sm font-semibold text-[#1c1008] shadow-lg shadow-orange-950/30 transition hover:brightness-105 active:scale-[0.99]"
+          >
+            Sign In
+          </button>
+        </form>
+
+        <div class="relative my-8">
+          <div class="absolute inset-0 flex items-center" aria-hidden="true">
+            <div class="w-full border-t border-white/10"></div>
+          </div>
+          <div class="relative flex justify-center">
+            <span
+              class="bg-[#0a0a0b]/80 px-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#938f99]"
+            >
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="flex w-full items-center justify-center gap-2.5 rounded-squircle border border-white/10 bg-[#1a1a1c] py-3.5 text-sm font-semibold text-white shadow-inner shadow-black/20 transition hover:bg-[#222224] active:scale-[0.99]"
+        >
+          <svg
+            class="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+            />
+          </svg>
+          Sign in with Apple
+        </button>
+
+        <p class="mt-10 text-center text-sm text-[#cac4d0]">
+          New here?
+          <a
+            href="#"
+            class="font-semibold text-[#ff8c42] underline-offset-4 hover:underline"
+            >Create an account</a
+          >
+        </p>
+      </div>
+    </main>
+  </body>
+</html>

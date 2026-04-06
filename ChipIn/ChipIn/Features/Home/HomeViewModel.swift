@@ -12,8 +12,17 @@ struct PersonBalance: Identifiable {
 @MainActor
 @Observable
 class HomeViewModel {
+    /// Last successful load — used to detect net/pending deltas for SFX + toasts after remote changes.
+    private var lastBalanceSnapshot: (overall: Decimal, pending: Decimal)?
+
     var personBalances: [PersonBalance] = []
     var overallNet: Decimal = 0
+    /// Sum of CAD amounts for expenses you paid this calendar month.
+    var lentThisMonthCAD: Decimal = 0
+    /// Total you still owe others (sum of negative balances).
+    var pendingOwedCAD: Decimal = 0
+    /// Consecutive calendar days (ending today) on which the user paid for at least one expense.
+    var streakDays: Int = 0
     var simplifiedTransactions: [SimplifiedTransaction] = []
     var isLoading = false
     var error: String?
@@ -82,6 +91,8 @@ class HomeViewModel {
 
             // Fetch user profiles for all counterparties
             let otherUserIds = Array(netByUser.keys.map(\.uuidString))
+            let newPersonBalances: [PersonBalance]
+            let newSimplified: [SimplifiedTransaction]
             if !otherUserIds.isEmpty {
                 let users: [AppUser] = try await supabase
                     .from("users")
@@ -90,24 +101,72 @@ class HomeViewModel {
                     .execute()
                     .value
                 let userMap = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
-                personBalances = netByUser.compactMap { userId, net in
+                newPersonBalances = netByUser.compactMap { userId, net in
                     guard let user = userMap[userId], net != 0 else { return nil }
                     return PersonBalance(id: userId, user: user, net: net)
                 }.sorted { abs($0.net) > abs($1.net) }
-                simplifiedTransactions = computeSimplified(balances: personBalances, userMap: userMap, myId: currentUserId)
+                newSimplified = computeSimplified(balances: newPersonBalances, userMap: userMap, myId: currentUserId)
             } else {
-                personBalances = []
-                simplifiedTransactions = []
+                newPersonBalances = []
+                newSimplified = []
             }
 
-            overallNet = personBalances.reduce(0) { $0 + $1.net }
+            let newOverallNet = newPersonBalances.reduce(0) { $0 + $1.net }
+            let newPendingOwed = newPersonBalances.filter { $0.net < 0 }.reduce(0) { $0 + abs($1.net) }
+
+            let startOfMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))!
+            let iso = ISO8601DateFormatter().string(from: startOfMonth)
+            let monthPaid: [Expense] = (try? await supabase
+                .from("expenses")
+                .select()
+                .eq("paid_by", value: currentUserId)
+                .gte("created_at", value: iso)
+                .execute()
+                .value) ?? []
+            let newLentThisMonth = monthPaid.reduce(0) { $0 + $1.cadAmount }
+
+            let allMyExpenses: [Expense] = (try? await supabase
+                .from("expenses")
+                .select()
+                .eq("paid_by", value: currentUserId)
+                .order("created_at", ascending: false)
+                .limit(60)
+                .execute()
+                .value) ?? []
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let uniqueDays = Set(allMyExpenses.map { calendar.startOfDay(for: $0.createdAt) })
+            var streak = 0
+            var checkDay = today
+            while uniqueDays.contains(checkDay) {
+                streak += 1
+                guard let prev = calendar.date(byAdding: .day, value: -1, to: checkDay) else { break }
+                checkDay = prev
+            }
+
+            if let prev = lastBalanceSnapshot {
+                BalanceFeedback.emitIfNeeded(
+                    deltaOverall: newOverallNet - prev.overall,
+                    deltaPending: newPendingOwed - prev.pending
+                )
+            }
+
+            withAnimation(.easeInOut(duration: 0.28)) {
+                personBalances = newPersonBalances
+                simplifiedTransactions = newSimplified
+                overallNet = newOverallNet
+                pendingOwedCAD = newPendingOwed
+                lentThisMonthCAD = newLentThisMonth
+                streakDays = streak
+            }
+            lastBalanceSnapshot = (newOverallNet, newPendingOwed)
 
             // Widget sync — write richer data for the widget extension
             let defaults = UserDefaults(suiteName: "group.com.deepakroshant.chipin")
-            defaults?.set(NSDecimalNumber(decimal: overallNet).doubleValue, forKey: "netBalance")
-            let widgetBalances = personBalances.prefix(3).map { pb -> [String: Any] in
+            defaults?.set(NSDecimalNumber(decimal: newOverallNet).doubleValue, forKey: "netBalance")
+            let widgetBalances = newPersonBalances.prefix(3).map { pb -> [String: Any] in
                 [
-                    "name": pb.user.name,
+                    "name": pb.user.displayName,
                     "net": NSDecimalNumber(decimal: pb.net).doubleValue
                 ]
             }
@@ -115,6 +174,7 @@ class HomeViewModel {
             WidgetCenter.shared.reloadAllTimelines()
 
         } catch {
+            guard error.chipInShouldShowInUI() else { return }
             self.error = error.localizedDescription
         }
     }

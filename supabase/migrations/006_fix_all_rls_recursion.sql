@@ -8,6 +8,8 @@
 
 -- Drop ALL existing policies that could recurse
 drop policy if exists "users_own"              on public.users;
+drop policy if exists "users_read"           on public.users;
+drop policy if exists "users_modify"          on public.users;
 drop policy if exists "users_update_own"       on public.users;
 drop policy if exists "users_select_all"       on public.users;
 drop policy if exists "group_member_access"    on public.groups;
@@ -50,6 +52,13 @@ set search_path = public as $$
   select group_id from public.expenses where id = eid limit 1;
 $$;
 
+-- Who paid this expense? (avoid "select from expenses" inside splits/items RLS)
+create or replace function public.expense_paid_by(eid uuid)
+returns uuid language sql security definer stable
+set search_path = public as $$
+  select paid_by from public.expenses where id = eid limit 1;
+$$;
+
 -- ============================================================
 -- Clean simple policies using the helpers
 -- ============================================================
@@ -83,17 +92,29 @@ create policy "expenses_access" on public.expenses
 
 -- Expense splits: your split, or expense you paid, or expense in your group
 create policy "expense_splits_access" on public.expense_splits
-  for all using (
+  for all
+  using (
     user_id = auth.uid()
-    or expense_id in (select id from public.expenses where paid_by = auth.uid())
+    or expense_paid_by(expense_id) = auth.uid()
+    or (expense_group(expense_id) is not null and is_group_member(expense_group(expense_id)))
+  )
+  with check (
+    user_id = auth.uid()
+    or expense_paid_by(expense_id) = auth.uid()
     or (expense_group(expense_id) is not null and is_group_member(expense_group(expense_id)))
   );
 
 -- Expense items: assigned to you, or expense you paid, or expense in your group
 create policy "expense_items_access" on public.expense_items
-  for all using (
+  for all
+  using (
     assigned_to = auth.uid()
-    or expense_id in (select id from public.expenses where paid_by = auth.uid())
+    or expense_paid_by(expense_id) = auth.uid()
+    or (expense_group(expense_id) is not null and is_group_member(expense_group(expense_id)))
+  )
+  with check (
+    assigned_to = auth.uid()
+    or expense_paid_by(expense_id) = auth.uid()
     or (expense_group(expense_id) is not null and is_group_member(expense_group(expense_id)))
   );
 
@@ -103,10 +124,18 @@ create policy "settlements_access" on public.settlements
 
 -- Comments: on expenses you can see
 create policy "comments_access" on public.comments
-  for all using (
+  for all
+  using (
     user_id = auth.uid()
-    or expense_id in (select id from public.expenses where paid_by = auth.uid())
+    or expense_paid_by(expense_id) = auth.uid()
     or has_expense_split(expense_id)
+    or (expense_group(expense_id) is not null and is_group_member(expense_group(expense_id)))
+  )
+  with check (
+    user_id = auth.uid()
+    or expense_paid_by(expense_id) = auth.uid()
+    or has_expense_split(expense_id)
+    or (expense_group(expense_id) is not null and is_group_member(expense_group(expense_id)))
   );
 
 -- Notifications: your own

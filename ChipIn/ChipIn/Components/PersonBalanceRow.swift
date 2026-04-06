@@ -2,12 +2,14 @@ import SwiftUI
 
 struct PersonBalanceRow: View {
     let personBalance: PersonBalance
+    @AppStorage("hideBalances") private var hideBalances = false
     @State private var appeared = false
 
     private var isOwed: Bool { personBalance.net > 0 }
     private var color: Color { isOwed ? ChipInTheme.success : ChipInTheme.danger }
     private var label: String { isOwed ? "owes you" : "you owe" }
-    private var name: String { personBalance.user.name }
+    private var displayName: String { personBalance.user.displayName }
+    private var avatarKey: String { personBalance.user.id.uuidString }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -16,21 +18,21 @@ struct PersonBalanceRow: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                ChipInTheme.avatarColor(for: name),
-                                ChipInTheme.avatarColor(for: name).opacity(0.5)
+                                ChipInTheme.avatarColor(for: avatarKey),
+                                ChipInTheme.avatarColor(for: avatarKey).opacity(0.5)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .frame(width: 44, height: 44)
-                Text(String(name.prefix(1)).uppercased())
+                Text(String(displayName.prefix(1)).uppercased())
                     .font(.headline.weight(.bold))
                     .foregroundStyle(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(name)
+                Text(displayName)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(ChipInTheme.label)
                 Text(label)
@@ -40,7 +42,7 @@ struct PersonBalanceRow: View {
 
             Spacer()
 
-            Text(abs(personBalance.net), format: .currency(code: "CAD"))
+            Text(BalancePrivacy.currency(abs(personBalance.net), code: "CAD", hidden: hideBalances))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(color)
         }

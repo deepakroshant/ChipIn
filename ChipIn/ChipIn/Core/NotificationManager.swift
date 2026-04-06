@@ -8,6 +8,15 @@ import PostgREST
 class NotificationManager {
     static let shared = NotificationManager()
 
+    /// If the device token arrives before Supabase restores the session, we save it and upload in `flushPendingAPNSTokenIfNeeded()`.
+    private static let pendingAPNsTokenKey = "chipin.pending_apns_token"
+
+    /// Bundled filenames for APNs `aps.sound` (must match files in `Resources/Sounds`).
+    enum SoundFile {
+        static let moneyOwed = "money_out.caf"
+        static let moneyGained = "money_in.caf"
+    }
+
     private init() {}
 
     func requestPermission() async -> Bool {
@@ -23,13 +32,26 @@ class NotificationManager {
 
     func handleAPNSToken(_ deviceToken: Data) async {
         let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
-        // Store token in users table for server-side push notifications
-        if let userId = try? await supabase.auth.session.user.id {
-            _ = try? await supabase
+        await uploadAPNsTokenToProfile(tokenString)
+    }
+
+    /// Call after sign-in or when `AuthManager` finishes loading the user so a token received before the session existed gets stored.
+    func flushPendingAPNSTokenIfNeeded() async {
+        guard let pending = UserDefaults.standard.string(forKey: Self.pendingAPNsTokenKey), !pending.isEmpty else { return }
+        await uploadAPNsTokenToProfile(pending)
+    }
+
+    private func uploadAPNsTokenToProfile(_ tokenString: String) async {
+        do {
+            let userId = try await supabase.auth.session.user.id
+            try await supabase
                 .from("users")
                 .update(["apns_token": tokenString])
                 .eq("id", value: userId.uuidString)
                 .execute()
+            UserDefaults.standard.removeObject(forKey: Self.pendingAPNsTokenKey)
+        } catch {
+            UserDefaults.standard.set(tokenString, forKey: Self.pendingAPNsTokenKey)
         }
     }
 
@@ -57,6 +79,23 @@ class NotificationManager {
     func cancelRecurringReminder(expenseId: UUID) {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: ["recurring-\(expenseId.uuidString)"])
+    }
+
+    /// Immediate local banner when the app isn’t foreground (e.g. Realtime still delivers briefly in background).
+    /// `positive`: `true` = money-in tone, `false` = money-out, `nil` = system default (mixed update).
+    func scheduleBalancePing(title: String, body: String, positive: Bool? = nil) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        if let positive {
+            let file = positive ? SoundFile.moneyGained : SoundFile.moneyOwed
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: file))
+        } else {
+            content.sound = .default
+        }
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.15, repeats: false)
+        let request = UNNotificationRequest(identifier: "balance-\(UUID().uuidString)", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
     }
 
     func scheduleLocalReminder(title: String, body: String, after seconds: TimeInterval) {

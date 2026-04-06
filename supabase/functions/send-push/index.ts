@@ -28,9 +28,15 @@ async function getApnsJwt(privateKeyPem: string): Promise<string> {
   );
 }
 
-async function sendPush(token: string, title: string, body: string, jwt: string) {
+async function sendPush(
+  token: string,
+  title: string,
+  body: string,
+  jwt: string,
+  sound: string = "default",
+) {
   const payload = JSON.stringify({
-    aps: { alert: { title, body }, sound: "default", badge: 1 }
+    aps: { alert: { title, body }, sound, badge: 1 },
   });
   const url = `${APNS_HOST}/3/device/${token}`;
   const res = await fetch(url, {
@@ -43,6 +49,10 @@ async function sendPush(token: string, title: string, body: string, jwt: string)
     },
     body: payload,
   });
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error(`APNs ${res.status} for device …${token.slice(-8)} sound=${sound}: ${errBody}`);
+  }
   return res;
 }
 
@@ -68,36 +78,61 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     if (type === "expenses") {
-      const { data: splits } = await supabase
+      const creatorId = record.created_by as string | null | undefined;
+      const paidBy = record.paid_by as string;
+
+      const { data: payerRow } = await supabase
+        .from("users")
+        .select("name")
+        .eq("id", paidBy)
+        .single();
+
+      const title = `${payerRow?.name ?? "Someone"} added an expense`;
+      const pushBody = `${record.title} — ${record.currency} ${parseFloat(record.total_amount).toFixed(2)}`;
+
+      // People who owe their share (not the payer). Never notify the person who recorded the expense.
+      const { data: oweSplits } = await supabase
         .from("expense_splits")
         .select("user_id")
         .eq("expense_id", record.id)
-        .neq("user_id", record.paid_by);
+        .neq("user_id", paidBy);
 
-      if (splits && splits.length > 0) {
-        const { data: payer } = await supabase
-          .from("users")
-          .select("name")
-          .eq("id", record.paid_by)
-          .single();
+      const oweIds = (oweSplits ?? [])
+        .map((s: { user_id: string }) => s.user_id)
+        .filter((uid: string) => !creatorId || uid !== creatorId);
 
-        const ids = splits.map((s: any) => s.user_id);
-        const { data: recipients } = await supabase
+      if (oweIds.length > 0) {
+        const { data: oweRecipients } = await supabase
           .from("users")
-          .select("apns_token")
-          .in("id", ids)
+          .select("id, apns_token, push_custom_sound_enabled")
+          .in("id", oweIds)
           .not("apns_token", "is", null);
 
-        const title = `${payer?.name ?? "Someone"} added an expense`;
-        const pushBody = `${record.title} — ${record.currency} ${parseFloat(record.total_amount).toFixed(2)}`;
         await Promise.all(
-          (recipients ?? []).map((r: any) => sendPush(r.apns_token, title, pushBody, jwt))
+          (oweRecipients ?? []).map((r: { apns_token: string; push_custom_sound_enabled?: boolean }) => {
+            const sound = r.push_custom_sound_enabled === false ? "default" : "money_out.caf";
+            return sendPush(r.apns_token, title, pushBody, jwt, sound);
+          }),
         );
+      }
+
+      // Payer is "owed" by others when someone else recorded the expense — notify with gained tone.
+      if (creatorId && paidBy !== creatorId) {
+        const { data: payerDevice } = await supabase
+          .from("users")
+          .select("apns_token, push_custom_sound_enabled")
+          .eq("id", paidBy)
+          .single();
+
+        if (payerDevice?.apns_token) {
+          const sound = payerDevice.push_custom_sound_enabled === false ? "default" : "money_in.caf";
+          await sendPush(payerDevice.apns_token, title, pushBody, jwt, sound);
+        }
       }
     } else if (type === "settlements") {
       const { data: recipient } = await supabase
         .from("users")
-        .select("name, apns_token")
+        .select("name, apns_token, push_custom_sound_enabled")
         .eq("id", record.to_user_id)
         .single();
 
@@ -108,11 +143,13 @@ Deno.serve(async (req) => {
         .single();
 
       if (recipient?.apns_token) {
+        const sound = recipient.push_custom_sound_enabled === false ? "default" : "money_in.caf";
         await sendPush(
           recipient.apns_token,
           "Payment received!",
           `${sender?.name ?? "Someone"} marked $${parseFloat(record.amount).toFixed(2)} as settled`,
-          jwt
+          jwt,
+          sound,
         );
       }
     }

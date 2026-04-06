@@ -21,6 +21,33 @@ struct SettlementService {
         )
         try await supabase.from("settlements").insert(payload).execute()
 
+        Task {
+            struct PushPayload: Encodable {
+                let table: String
+                let record: Record
+                struct Record: Encodable {
+                    let from_user_id: String
+                    let to_user_id: String
+                    let amount: String
+                }
+            }
+            let body = PushPayload(
+                table: "settlements",
+                record: .init(
+                    from_user_id: fromUserId.uuidString,
+                    to_user_id: toUserId.uuidString,
+                    amount: "\(amount)"
+                )
+            )
+            do {
+                _ = try await supabase.functions.invoke("send-push", options: .init(body: body))
+            } catch {
+                #if DEBUG
+                print("ChipIn send-push (settlement) failed:", error)
+                #endif
+            }
+        }
+
         try await supabase
             .from("expense_splits")
             .update(["is_settled": true])

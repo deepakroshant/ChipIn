@@ -5,11 +5,13 @@ import PostgREST
 struct PersonDetailView: View {
     let balance: PersonBalance
     @Environment(AuthManager.self) var auth
+    @AppStorage("hideBalances") private var hideBalances = false
     @State private var expenses: [Expense] = []
     @State private var isLoading = false
     @State private var showSettleUp = false
     @State private var nudgeSent = false
     @State private var isNudging = false
+    @State private var splitsByExpense: [UUID: ExpenseSplit] = [:]
     private let nudgeService = NudgeService()
 
     private var amountOwed: Decimal { abs(balance.net) }
@@ -25,6 +27,10 @@ struct PersonDetailView: View {
                     personHeader
                         .padding(.horizontal)
                         .padding(.top)
+
+                    if !expenses.isEmpty {
+                        settlementProgressBar
+                    }
 
                     // Settle up button (only if non-zero balance)
                     if balance.net != 0 {
@@ -49,7 +55,7 @@ struct PersonDetailView: View {
                                 Task {
                                     isNudging = true
                                     defer { isNudging = false }
-                                    let myName = auth.currentUser?.name ?? "Your friend"
+                                    let myName = auth.currentUser?.displayName ?? "Your friend"
                                     try? await nudgeService.sendNudge(
                                         toUserId: balance.user.id,
                                         fromName: myName,
@@ -99,8 +105,23 @@ struct PersonDetailView: View {
 
                             LazyVStack(spacing: 0) {
                                 ForEach(expenses) { expense in
-                                    ExpenseRow(expense: expense)
-                                        .padding(.horizontal)
+                                    ZStack(alignment: .topTrailing) {
+                                        ExpenseRow(expense: expense)
+                                            .padding(.horizontal)
+                                        if let split = splitsByExpense[expense.id] {
+                                            Text(split.isSettled ? "Settled ✓" : "Pending")
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(split.isSettled ? ChipInTheme.success : ChipInTheme.accent)
+                                                .padding(.horizontal, 7)
+                                                .padding(.vertical, 3)
+                                                .background(
+                                                    Capsule()
+                                                        .fill(split.isSettled ? ChipInTheme.success.opacity(0.15) : ChipInTheme.accent.opacity(0.15))
+                                                )
+                                                .padding(.trailing, 20)
+                                                .padding(.top, 10)
+                                        }
+                                    }
                                     if expense.id != expenses.last?.id {
                                         Divider()
                                             .background(ChipInTheme.elevated)
@@ -117,9 +138,9 @@ struct PersonDetailView: View {
                 .padding(.bottom, 32)
             }
         }
-        .navigationTitle(balance.user.name)
+        .navigationTitle(balance.user.displayName)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(ChipInTheme.card, for: .navigationBar)
+        .toolbarBackground(ChipInTheme.surfaceHeader, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await loadExpenses() }
         .sheet(isPresented: $showSettleUp) {
@@ -149,20 +170,49 @@ struct PersonDetailView: View {
         }
     }
 
+    private var settlementProgressBar: some View {
+        let settled = expenses.filter { splitsByExpense[$0.id]?.isSettled == true }.count
+        let total = expenses.count
+        let pct = total > 0 ? Double(settled) / Double(total) : 0
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Settlement progress")
+                    .font(.caption)
+                    .foregroundStyle(ChipInTheme.secondaryLabel)
+                Spacer()
+                Text("\(settled) / \(total) expenses settled")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(ChipInTheme.tertiaryLabel)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(ChipInTheme.elevated)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(ChipInTheme.success)
+                        .frame(width: geo.size.width * pct)
+                        .animation(ChipInTheme.spring, value: pct)
+                }
+            }
+            .frame(height: 6)
+        }
+        .padding(.horizontal)
+    }
+
     private var personHeader: some View {
         HStack(spacing: 16) {
             // Avatar
             Circle()
-                .fill(ChipInTheme.avatarColor(for: balance.user.name).opacity(0.2))
+                .fill(ChipInTheme.avatarColor(for: balance.user.id.uuidString).opacity(0.2))
                 .frame(width: 56, height: 56)
                 .overlay(
-                    Text(balance.user.name.prefix(1).uppercased())
+                    Text(balance.user.displayName.prefix(1).uppercased())
                         .font(.title2.bold())
-                        .foregroundStyle(ChipInTheme.avatarColor(for: balance.user.name))
+                        .foregroundStyle(ChipInTheme.avatarColor(for: balance.user.id.uuidString))
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(balance.user.name)
+                Text(balance.user.displayName)
                     .font(.headline)
                     .foregroundStyle(ChipInTheme.label)
                 if balance.net == 0 {
@@ -170,11 +220,11 @@ struct PersonDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(ChipInTheme.success)
                 } else if theyOweMe {
-                    Text("owes you \(amountOwed, format: .currency(code: "CAD"))")
+                    Text("owes you \(BalancePrivacy.currency(amountOwed, code: "CAD", hidden: hideBalances))")
                         .font(.subheadline)
                         .foregroundStyle(ChipInTheme.success)
                 } else {
-                    Text("you owe \(amountOwed, format: .currency(code: "CAD"))")
+                    Text("you owe \(BalancePrivacy.currency(amountOwed, code: "CAD", hidden: hideBalances))")
                         .font(.subheadline)
                         .foregroundStyle(ChipInTheme.danger)
                 }
@@ -182,7 +232,7 @@ struct PersonDetailView: View {
 
             Spacer()
 
-            Text(amountOwed, format: .currency(code: "CAD"))
+            Text(BalancePrivacy.currency(amountOwed, code: "CAD", hidden: hideBalances))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(theyOweMe ? ChipInTheme.success : ChipInTheme.danger)
         }
@@ -219,6 +269,20 @@ struct PersonDetailView: View {
             var seen = Set<UUID>()
             combined = combined.filter { seen.insert($0.id).inserted }
             expenses = combined.sorted { $0.createdAt > $1.createdAt }
+
+            let expenseIds = expenses.map(\.id.uuidString)
+            if !expenseIds.isEmpty {
+                let splits: [ExpenseSplit] = (try? await supabase
+                    .from("expense_splits")
+                    .select()
+                    .in("expense_id", values: expenseIds)
+                    .eq("user_id", value: myId.uuidString)
+                    .execute()
+                    .value) ?? []
+                splitsByExpense = Dictionary(uniqueKeysWithValues: splits.map { ($0.expenseId, $0) })
+            } else {
+                splitsByExpense = [:]
+            }
         }
     }
 }

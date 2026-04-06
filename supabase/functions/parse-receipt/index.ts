@@ -23,10 +23,12 @@ IMPORTANT RULES:
 - If the image is partially cut off, extract whatever is visible.
 
 Return ONLY this JSON (no markdown, no code blocks, no extra text):
-{"items":[{"name":"string","price":0.00}],"subtotal":0.00,"tax":0.00,"tip":0.00,"total":0.00}
+{"merchant":"string or empty","items":[{"name":"string","price":0.00}],"subtotal":0.00,"tax":0.00,"tip":0.00,"total":0.00}
+
+- "merchant": store or restaurant name from the top of the receipt (short). Use "" if not visible.
 
 Example for a café receipt:
-{"items":[{"name":"Latte","price":5.50},{"name":"Sandwich","price":9.25}],"subtotal":14.75,"tax":1.92,"tip":0.00,"total":16.67}`
+{"merchant":"North Cafe","items":[{"name":"Latte","price":5.50},{"name":"Sandwich","price":9.25}],"subtotal":14.75,"tax":1.92,"tip":0.00,"total":16.67}`
 
 async function callGemini(model: string, imageBase64: string): Promise<Response> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`
@@ -211,9 +213,13 @@ serve(async (req) => {
     const tax = normalizePrice(parsed.tax) ?? 0
     const tip = normalizePrice(parsed.tip) ?? 0
     const total = normalizePrice(parsed.total) ?? 0
+    const merchantRaw =
+      typeof (parsed as { merchant?: unknown }).merchant === "string"
+        ? ((parsed as { merchant: string }).merchant || "").trim()
+        : ""
 
     return new Response(
-      JSON.stringify({ items, subtotal, tax, tip, total }),
+      JSON.stringify({ items, subtotal, tax, tip, total, merchant: merchantRaw }),
       { headers: jsonHeaders },
     )
   } catch (e) {

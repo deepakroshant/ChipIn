@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChipIn — Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'primary-container': '#ff8c42',
+            primary: '#ffb68d',
+            secondary: '#4edea3',
+            'secondary-container': '#00a572',
+            tertiary: '#ffb95f',
+            'tertiary-container': '#ed9800',
+            background: '#131315',
+            surface: '#131315',
+            'surface-dim': '#131315',
+            'surface-container-lowest': '#0e0e10',
+            'surface-container-low': '#1b1b1d',
+            'surface-container': '#201f21',
+            'surface-container-high': '#2a2a2c',
+            'surface-container-highest': '#353437',
+            'surface-variant': '#353437',
+            'surface-bright': '#39393b',
+            'on-surface': '#e5e1e4',
+            'on-surface-variant': '#ddc1b3',
+            'on-background': '#e5e1e4',
+            'on-primary': '#532200',
+            'on-primary-container': '#6a2d00',
+            'on-secondary': '#003824',
+            'on-secondary-container': '#00311f',
+            'on-tertiary': '#472a00',
+            outline: '#a48c7f',
+            'outline-variant': '#564338',
+            error: '#ffb4ab',
+            'error-container': '#93000a',
+            'on-error': '#690005',
+            'on-error-container': '#ffdad6',
+          },
+          fontFamily: {
+            headline: ['Manrope', 'system-ui', 'sans-serif'],
+            body: ['Manrope', 'system-ui', 'sans-serif'],
+            label: ['Manrope', 'system-ui', 'sans-serif'],
+          },
+          borderRadius: {
+            squircle: '32px',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body class="font-body min-h-screen bg-[#0e0e10] text-[#e5e1e4] pb-32 antialiased">
+  <div class="pointer-events-none fixed inset-x-0 top-0 z-0 h-48 bg-primary-container/20 blur-[80px]" aria-hidden="true"></div>
+
+  <header class="fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#1B1B1D] px-4">
+    <div class="flex items-center gap-3">
+      <div class="h-10 w-10 shrink-0 rounded-full bg-surface-container-high ring-1 ring-white/10" aria-hidden="true"></div>
+      <span class="font-headline text-xl font-black tracking-tight text-[#FF8C42]">ChipIn</span>
+    </div>
+    <button type="button" class="flex h-10 w-10 items-center justify-center rounded-full text-[#DDC1B3] transition hover:bg-white/5" aria-label="Notifications">
+      <span class="material-symbols-outlined text-[26px]">notifications</span>
+    </button>
+  </header>
+
+  <main class="relative z-10 mx-auto max-w-2xl px-6 pt-24">
+    <section class="@container mb-8">
+      <div class="relative overflow-hidden rounded-squircle border border-white/10 bg-[#353437]/80 p-6 shadow-xl backdrop-blur-xl">
+        <div class="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary-container/35 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-secondary/20 blur-3xl" aria-hidden="true"></div>
+        <p class="font-label relative text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">Total net balance</p>
+        <p class="font-headline relative mt-2 text-4xl font-extrabold tracking-tight text-secondary sm:text-5xl">$420.69</p>
+        <p class="font-body relative mt-1 text-sm text-on-surface-variant">You&apos;re owed</p>
+        <div class="relative mt-6 grid grid-cols-2 gap-3 @md:gap-4">
+          <button type="button" class="font-label rounded-2xl bg-gradient-to-br from-primary-container to-tertiary-container py-3.5 text-sm font-bold text-on-primary shadow-lg shadow-primary-container/25 transition hover:brightness-110 active:scale-[0.98]">
+            Request
+          </button>
+          <button type="button" class="font-label rounded-2xl bg-gradient-to-br from-primary-container to-tertiary-container py-3.5 text-sm font-bold text-on-primary shadow-lg shadow-primary-container/25 transition hover:brightness-110 active:scale-[0.98]">
+            Settle
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-8 grid grid-cols-2 gap-3">
+      <article class="rounded-squircle border border-white/5 bg-surface-container-high/90 p-4 backdrop-blur-md">
+        <p class="font-label text-xs font-medium text-on-surface-variant">Lent this month</p>
+        <p class="font-headline mt-2 text-2xl font-bold text-on-surface">$128.40</p>
+      </article>
+      <article class="rounded-squircle border border-white/5 bg-surface-container-high/90 p-4 backdrop-blur-md">
+        <p class="font-label text-xs font-medium text-on-surface-variant">Pending split</p>
+        <p class="font-headline mt-2 text-2xl font-bold text-primary-container">$64.00</p>
+      </article>
+    </section>
+
+    <section>
+      <h2 class="font-headline mb-4 text-lg font-bold text-on-surface">Recent activity</h2>
+      <ul class="space-y-2">
+        <li class="flex items-center justify-between rounded-2xl border border-white/5 bg-surface-container/80 px-4 py-3 backdrop-blur-sm">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-highest text-lg" aria-hidden="true">🍕</span>
+            <div>
+              <p class="font-body text-sm font-semibold text-on-surface">Pizza night</p>
+              <p class="font-label text-xs text-on-surface-variant">Trip group · Today</p>
+            </div>
+          </div>
+          <span class="font-headline text-sm font-bold text-secondary">+$18.50</span>
+        </li>
+        <li class="flex items-center justify-between rounded-2xl border border-white/5 bg-surface-container/80 px-4 py-3 backdrop-blur-sm">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-highest text-lg" aria-hidden="true">☕</span>
+            <div>
+              <p class="font-body text-sm font-semibold text-on-surface">Coffee run</p>
+              <p class="font-label text-xs text-on-surface-variant">Roommates · Yesterday</p>
+            </div>
+          </div>
+          <span class="font-headline text-sm font-bold text-primary-container">−$4.25</span>
+        </li>
+        <li class="flex items-center justify-between rounded-2xl border border-white/5 bg-surface-container/80 px-4 py-3 backdrop-blur-sm">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-highest text-lg" aria-hidden="true">🥑</span>
+            <div>
+              <p class="font-body text-sm font-semibold text-on-surface">Groceries</p>
+              <p class="font-label text-xs text-on-surface-variant">Weekend trip · Mon</p>
+            </div>
+          </div>
+          <span class="font-headline text-sm font-bold text-secondary">+$32.10</span>
+        </li>
+        <li class="flex items-center justify-between rounded-2xl border border-white/5 bg-surface-container/80 px-4 py-3 backdrop-blur-sm">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-highest text-lg" aria-hidden="true">🎬</span>
+            <div>
+              <p class="font-body text-sm font-semibold text-on-surface">Movie tickets</p>
+              <p class="font-label text-xs text-on-surface-variant">Friends · Sun</p>
+            </div>
+          </div>
+          <span class="font-headline text-sm font-bold text-primary-container">−$12.00</span>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-[#353437]/80 px-2 pt-2 backdrop-blur-xl rounded-t-3xl" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+    <div class="relative mx-auto flex max-w-2xl items-end justify-between pb-2">
+      <a href="#" class="font-label flex min-w-[3.5rem] flex-col items-center gap-1 py-2 text-xs font-semibold text-primary-container" aria-current="page">
+        <span class="rounded-full bg-primary-container/20 px-4 py-1.5 text-primary-container">Home</span>
+      </a>
+      <a href="#" class="font-label flex min-w-[3.5rem] flex-col items-center gap-1 py-2 text-xs font-medium text-on-surface-variant">
+        <span class="material-symbols-outlined text-[22px]">groups</span>
+        Groups
+      </a>
+      <div class="relative -top-6 flex flex-col items-center">
+        <button type="button" class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary-container to-tertiary-container text-on-primary shadow-lg shadow-primary-container/40 ring-4 ring-[#0e0e10]" aria-label="Add expense">
+          <span class="material-symbols-outlined text-[28px]">add</span>
+        </button>
+      </div>
+      <a href="#" class="font-label flex min-w-[3.5rem] flex-col items-center gap-1 py-2 text-xs font-medium text-on-surface-variant">
+        <span class="material-symbols-outlined text-[22px]">insights</span>
+        Insights
+      </a>
+      <a href="#" class="font-label flex min-w-[3.5rem] flex-col items-center gap-1 py-2 text-xs font-medium text-on-surface-variant">
+        <span class="material-symbols-outlined text-[22px]">person</span>
+        Profile
+      </a>
+    </div>
+  </nav>
+</body>
+</html>

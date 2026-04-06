@@ -58,6 +58,7 @@ class AuthManager {
             currentUser = user
             isAuthenticated = true
             lastError = nil
+            await NotificationManager.shared.flushPendingAPNSTokenIfNeeded()
         } catch {
             currentUser = nil
             isAuthenticated = false

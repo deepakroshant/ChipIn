@@ -31,14 +31,33 @@ struct SplitPickerView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(splitType == type ? ChipInTheme.accent : ChipInTheme.elevated)
-                    .foregroundStyle(splitType == type ? Color.black : Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .background(chipBackground(selected: splitType == type))
+                    .foregroundStyle(splitType == type ? ChipInTheme.onPrimary : Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(
+                                splitType == type ? Color.clear : Color.white.opacity(0.06),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(color: splitType == type ? ChipInTheme.accent.opacity(0.22) : .clear, radius: 8, y: 3)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(label)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func chipBackground(selected: Bool) -> some View {
+        if selected {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(ChipInTheme.ctaGradient)
+        } else {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(ChipInTheme.elevated)
+        }
     }
 }

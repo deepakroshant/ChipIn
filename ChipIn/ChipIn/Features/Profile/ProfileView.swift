@@ -5,10 +5,12 @@ import PhotosUI
 
 struct ProfileView: View {
     @Environment(AuthManager.self) var auth
-    @State private var soundEnabled = UserDefaults.standard.bool(forKey: "soundEnabled")
-    @State private var biometricEnabled = UserDefaults.standard.bool(forKey: "biometricEnabled")
-    @State private var hideBalances = UserDefaults.standard.bool(forKey: "hideBalances")
-    @State private var selectedAccent = UserDefaults.standard.string(forKey: "accentColor") ?? "#F97316"
+    @AppStorage("soundEnabled") private var soundEnabled = true
+    @State private var pushCustomSoundEnabled = UserDefaults.standard.object(forKey: "pushCustomSoundEnabled") as? Bool ?? true
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("hideBalances") private var hideBalances = false
+    @AppStorage("accentColor") private var accentColorHex = "#F97316"
+    @AppStorage("forceDarkMode") private var forceDarkMode = true
     @State private var interacContact = ""
     @State private var username = ""
     @State private var isSavingInterac = false
@@ -86,9 +88,20 @@ struct ProfileView: View {
                             let url = try await avatarService.uploadAvatar(userId: userId, image: img)
                             try await avatarService.saveAvatarURL(userId: userId, url: url)
                             await auth.reloadCurrentUser()
+                            selectedAvatar = nil
                         } catch {
                             avatarError = error.localizedDescription
                         }
+                    }
+                }
+
+                if let userId = auth.currentUser?.id {
+                    Section {
+                        SpendingPersonalityView(userId: userId)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+                    } header: {
+                        Text("Your Spending Personality")
                     }
                 }
 
@@ -147,63 +160,81 @@ struct ProfileView: View {
                 }
 
                 // Appearance
-                Section("Appearance") {
-                    HStack {
-                        Text("Accent Colour")
+                Section {
+                    Toggle(isOn: $forceDarkMode) {
+                        Label("Force Dark Mode", systemImage: "moon.fill")
                             .foregroundStyle(ChipInTheme.label)
-                        Spacer()
-                        HStack(spacing: 12) {
-                            ForEach(accents, id: \.self) { hex in
-                                Circle()
-                                    .fill(Color(hex: hex))
-                                    .frame(width: 26, height: 26)
-                                    .overlay(
-                                        Circle().stroke(.white, lineWidth: selectedAccent == hex ? 2.5 : 0)
-                                    )
-                                    .onTapGesture {
-                                        selectedAccent = hex
-                                        UserDefaults.standard.set(hex, forKey: "accentColor")
-                                    }
-                            }
-                        }
                     }
+                    .tint(ChipInTheme.accent)
                     .listRowBackground(ChipInTheme.card)
+
+                    accentColourRow
+                } header: {
+                    Text("Appearance")
                 }
 
                 // Privacy & Security
-                Section("Privacy & Security") {
+                Section {
                     Toggle(isOn: $biometricEnabled) {
                         Label("Face ID / Touch ID Lock", systemImage: "faceid")
                             .foregroundStyle(ChipInTheme.label)
                     }
-                    .tint(Color(hex: selectedAccent))
+                    .tint(ChipInTheme.accent)
                     .listRowBackground(ChipInTheme.card)
-                    .onChange(of: biometricEnabled) { _, val in
-                        UserDefaults.standard.set(val, forKey: "biometricEnabled")
-                    }
 
                     Toggle(isOn: $hideBalances) {
                         Label("Hide Balances", systemImage: "eye.slash")
                             .foregroundStyle(ChipInTheme.label)
                     }
-                    .tint(Color(hex: selectedAccent))
+                    .tint(ChipInTheme.accent)
                     .listRowBackground(ChipInTheme.card)
-                    .onChange(of: hideBalances) { _, val in
-                        UserDefaults.standard.set(val, forKey: "hideBalances")
-                    }
+                } header: {
+                    Text("Privacy & Security")
                 }
 
                 // Sounds & Haptics
-                Section("Sounds & Haptics") {
+                Section {
                     Toggle(isOn: $soundEnabled) {
-                        Label("Custom Sounds", systemImage: "speaker.wave.2.fill")
+                        Label("In-app sounds", systemImage: "speaker.wave.2.fill")
                             .foregroundStyle(ChipInTheme.label)
                     }
-                    .tint(Color(hex: selectedAccent))
+                    .tint(ChipInTheme.accent)
                     .listRowBackground(ChipInTheme.card)
-                    .onChange(of: soundEnabled) { _, val in
-                        UserDefaults.standard.set(val, forKey: "soundEnabled")
+
+                    Toggle(isOn: $pushCustomSoundEnabled) {
+                        Label("Custom push notification sounds", systemImage: "bell.badge.fill")
+                            .foregroundStyle(ChipInTheme.label)
                     }
+                    .tint(ChipInTheme.accent)
+                    .listRowBackground(ChipInTheme.card)
+                    .onChange(of: pushCustomSoundEnabled) { _, val in
+                        UserDefaults.standard.set(val, forKey: "pushCustomSoundEnabled")
+                        Task { await savePushCustomSoundPreference(val) }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Preview notification tones")
+                            .font(.caption)
+                            .foregroundStyle(ChipInTheme.tertiaryLabel)
+                        HStack(spacing: 10) {
+                            Button("Owed") {
+                                SoundService.shared.play(.moneyOut, haptic: .light)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(ChipInTheme.accent)
+
+                            Button("Gained") {
+                                SoundService.shared.play(.moneyIn, haptic: .light)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(ChipInTheme.accent)
+                        }
+                    }
+                    .listRowBackground(ChipInTheme.card)
+                } header: {
+                    Text("Sounds & Haptics")
+                } footer: {
+                    Text("In-app plays when you save an expense on this device. Push sounds apply on other devices when someone else affects your balance — turn off custom push sounds to use Apple’s default tone. Remote push does not work in Simulator (use a real iPhone). For Simulator audio, enable output in I/O → Audio and use Preview tones above.")
                 }
 
                 // Widgets
@@ -250,6 +281,7 @@ struct ProfileView: View {
             .onAppear {
                 interacContact = auth.currentUser?.interacContact ?? ""
                 username = auth.currentUser?.username ?? ""
+                pushCustomSoundEnabled = auth.currentUser?.pushCustomSoundEnabled ?? true
             }
         }
     }
@@ -266,21 +298,21 @@ struct ProfileView: View {
                     img.resizable().scaledToFill()
                 } else {
                     Circle()
-                        .fill(Color(hex: selectedAccent).opacity(0.2))
+                        .fill(Color(hex: accentColorHex).opacity(0.2))
                         .overlay(
                             Text(auth.currentUser?.displayName.prefix(1).uppercased() ?? "?")
                                 .font(.title2).bold()
-                                .foregroundStyle(Color(hex: selectedAccent))
+                                .foregroundStyle(Color(hex: accentColorHex))
                         )
                 }
             }
         } else {
             Circle()
-                .fill(Color(hex: selectedAccent).opacity(0.2))
+                .fill(Color(hex: accentColorHex).opacity(0.2))
                 .overlay(
                     Text(auth.currentUser?.displayName.prefix(1).uppercased() ?? "?")
                         .font(.title2).bold()
-                        .foregroundStyle(Color(hex: selectedAccent))
+                        .foregroundStyle(Color(hex: accentColorHex))
                 )
         }
     }
@@ -301,11 +333,56 @@ struct ProfileView: View {
     private func saveInteracContact() {
         guard let id = auth.currentUser?.id else { return }
         Task {
-            try? await supabase
+            _ = try? await supabase
                 .from("users")
                 .update(["interac_contact": interacContact])
                 .eq("id", value: id)
                 .execute()
         }
+    }
+
+    private func savePushCustomSoundPreference(_ enabled: Bool) async {
+        guard let id = auth.currentUser?.id else { return }
+        struct Row: Encodable { let push_custom_sound_enabled: Bool }
+        do {
+            try await supabase
+                .from("users")
+                .update(Row(push_custom_sound_enabled: enabled))
+                .eq("id", value: id)
+                .execute()
+        } catch {
+            // Preference sync is best-effort; UI already updated locally.
+        }
+        await auth.reloadCurrentUser()
+    }
+
+    private var accentColourRow: some View {
+        HStack {
+            Text("Accent Colour")
+                .foregroundStyle(ChipInTheme.label)
+            Spacer()
+            HStack(spacing: 12) {
+                ForEach(accents, id: \.self) { hex in
+                    accentColourCircle(hex: hex)
+                }
+            }
+        }
+        .listRowBackground(ChipInTheme.card)
+    }
+
+    private func accentColourCircle(hex: String) -> some View {
+        let isSelected = accentColorHex == hex
+        return Circle()
+            .fill(Color(hex: hex))
+            .frame(width: 26, height: 26)
+            .overlay(
+                Circle().stroke(
+                    isSelected ? Color.white.opacity(0.9) : ChipInTheme.elevated,
+                    lineWidth: isSelected ? 2.5 : 1
+                )
+            )
+            .onTapGesture {
+                accentColorHex = hex
+            }
     }
 }

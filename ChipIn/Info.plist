@@ -44,6 +44,8 @@
 	<string>ChipIn uses the camera to scan receipts and split expenses automatically.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ChipIn uses your photo library to select receipts for expense splitting.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>ChipIn uses Face ID to unlock the app when you turn on app lock.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

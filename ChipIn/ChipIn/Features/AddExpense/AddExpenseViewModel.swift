@@ -38,12 +38,9 @@ class AddExpenseViewModel {
     /// Tip amount (added on top, distributed proportionally).
     var tipAmount: Decimal = 0
 
-    var templates: [ExpenseTemplate] = []
-    var showSaveTemplatePrompt = false
-    var templateName = ""
+    var parsedMentionHandle: String?
 
     private let service = ExpenseService()
-    private let templateService = TemplateService()
 
     var amountDecimal: Decimal { Decimal(string: amount) ?? 0 }
     var taxDecimal: Decimal { Decimal(string: taxAmount) ?? 0 }
@@ -63,33 +60,29 @@ class AddExpenseViewModel {
         selectedUserIds.reduce(0) { $0 + (Decimal(string: customSplitValues[$1] ?? "") ?? 0) }
     }
 
-    // MARK: - Templates
-
-    func loadTemplates(userId: UUID) async {
-        templates = (try? await templateService.fetchTemplates(userId: userId)) ?? []
-    }
-
-    func applyTemplate(_ template: ExpenseTemplate) {
-        title = template.title
-        currency = template.currency
-        if let cat = ExpenseCategory(rawValue: template.category) {
-            category = cat
+    /// Fills amount, tax, and tip from a scanned receipt so `totalWithTax` matches subtotal + tax + tip (no double-counting).
+    func applyReceiptToAmountFields(_ receipt: ParsedReceipt) {
+        amount = Self.formatDecimalForField(receipt.subtotal)
+        taxAmount = receipt.tax > 0 ? Self.formatDecimalForField(receipt.tax) : ""
+        tipAmount = receipt.tip
+        if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            title = receipt.suggestedTitle
         }
     }
 
-    func saveCurrentAsTemplate(userId: UUID, name: String) async {
-        guard !title.isEmpty else { return }
-        try? await templateService.saveTemplate(
-            userId: userId, name: name, title: title,
-            category: category.rawValue, splitType: splitType.rawValue,
-            currency: currency
-        )
-        await loadTemplates(userId: userId)
+    /// Clears receipt-driven state when switching back to manual entry.
+    func clearReceiptData() {
+        parsedReceipt = nil
+        if splitType == .byItem {
+            splitType = .equal
+        }
+        tipAmount = 0
+        taxAmount = ""
     }
 
-    func deleteTemplate(_ template: ExpenseTemplate) async {
-        try? await templateService.deleteTemplate(id: template.id)
-        templates.removeAll { $0.id == template.id }
+    private static func formatDecimalForField(_ d: Decimal) -> String {
+        let v = Double(truncating: NSDecimalNumber(decimal: d))
+        return String(format: "%.2f", v)
     }
 
     // MARK: - Auto-category
@@ -101,6 +94,19 @@ class AddExpenseViewModel {
         } else {
             wasAutoDetected = false
         }
+    }
+
+    /// Applies quick-text parsing: if title contains "$20 @sarah" style, auto-fills amount and sets handle search.
+    func applyQuickParse(raw: String) -> String {
+        let result = QuickTextParser.parse(raw)
+        if let a = result.amount, !a.isEmpty, amount.isEmpty {
+            amount = a
+        }
+        parsedMentionHandle = result.mentionedHandle
+        if !result.cleanTitle.isEmpty {
+            return result.cleanTitle
+        }
+        return raw
     }
 
     // MARK: - Participant helpers
@@ -139,12 +145,9 @@ class AddExpenseViewModel {
         let ids = selectedUserIds
         guard !ids.isEmpty else { return .failure(SplitError(message: "Select at least one person.")) }
 
-        // Receipt scans with line items use per-line math (matches `createExpense`’s `splitType: .byItem`).
-        // If we used the UI’s Equal/Percent/etc. here, splits would disagree with stored line items.
-        if let receipt = parsedReceipt {
-            if receipt.items.isEmpty {
-                return .success(service.calculateEqualSplits(amount: total, userIds: ids))
-            }
+        // Per-line splits only when the user explicitly picks "By Item" and the receipt has lines.
+        // Otherwise (Equal, %, exact, shares) we split the grand total — same as manual entry with tax.
+        if let receipt = parsedReceipt, splitType == .byItem, !receipt.items.isEmpty {
             return .success(service.calculateItemSplits(receipt: receipt, participantIds: ids))
         }
 
@@ -190,9 +193,6 @@ class AddExpenseViewModel {
             return .success(splits)
 
         case .byItem:
-            if let receipt = parsedReceipt {
-                return .success(service.calculateItemSplits(receipt: receipt, participantIds: ids))
-            }
             return .success(service.calculateEqualSplits(amount: total, userIds: ids))
         }
     }
@@ -239,14 +239,14 @@ class AddExpenseViewModel {
             defer { isSubmitting = false }
             do {
                 var expenseItems: [NewExpenseItem] = []
-                if let receipt = parsedReceipt {
+                let useLineItems = (parsedReceipt?.items.isEmpty == false) && splitType == .byItem
+                if useLineItems, let receipt = parsedReceipt {
                     expenseItems = receipt.items.compactMap { item in
                         guard let owner = item.assignedTo else { return nil }
                         return NewExpenseItem(name: item.name, price: item.price, taxPortion: item.taxPortion, assignedTo: owner)
                     }
                 }
                 let gid: UUID? = context == .friends ? nil : selectedGroupId
-                let lineItemReceipt = parsedReceipt.map { !$0.items.isEmpty } ?? false
                 let expense = try await service.createExpense(
                     groupId: gid,
                     paidBy: paidBy,
@@ -254,7 +254,7 @@ class AddExpenseViewModel {
                     amount: totalWithTax,
                     currency: currency,
                     category: category.rawValue,
-                    splitType: lineItemReceipt ? .byItem : splitType,
+                    splitType: useLineItems ? .byItem : splitType,
                     splits: splits,
                     isRecurring: isRecurring,
                     recurrenceInterval: isRecurring ? recurrenceInterval : nil,
@@ -267,6 +267,12 @@ class AddExpenseViewModel {
                         expenseId: expense.id
                     )
                 }
+                ToastManager.shared.markLocalSave()
+                NotificationCenter.default.post(
+                    name: .chipInToast,
+                    object: nil,
+                    userInfo: ["message": "Expense saved"]
+                )
                 SoundService.shared.play(.expenseAdd, haptic: .light)
                 NotificationCenter.default.post(name: .dataDidUpdate, object: nil)
                 return true

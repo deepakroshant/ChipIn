@@ -6,3 +6,7 @@ DerivedData/
 *.dSYM.zip
 .env
 Secrets.swift
+.cursor/mcp.json
+.DS_Store
+**/.DS_Store
+.omc/

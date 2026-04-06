@@ -1,0 +1,43 @@
+{
+  "name": "Emerald Obsidian (Stitch)",
+  "description": "Material-style tokens from Tailwind extend in Stitch HTML exports",
+  "colors": {
+    "primary-container": "#ff8c42",
+    "primary": "#ffb68d",
+    "secondary": "#4edea3",
+    "secondary-container": "#00a572",
+    "tertiary": "#ffb95f",
+    "tertiary-container": "#ed9800",
+    "background": "#131315",
+    "surface": "#131315",
+    "surface-dim": "#131315",
+    "surface-container-lowest": "#0e0e10",
+    "surface-container-low": "#1b1b1d",
+    "surface-container": "#201f21",
+    "surface-container-high": "#2a2a2c",
+    "surface-container-highest": "#353437",
+    "surface-variant": "#353437",
+    "surface-bright": "#39393b",
+    "on-surface": "#e5e1e4",
+    "on-surface-variant": "#ddc1b3",
+    "on-background": "#e5e1e4",
+    "on-primary": "#532200",
+    "on-primary-container": "#6a2d00",
+    "on-secondary": "#003824",
+    "on-secondary-container": "#00311f",
+    "on-tertiary": "#472a00",
+    "outline": "#a48c7f",
+    "outline-variant": "#564338",
+    "error": "#ffb4ab",
+    "error-container": "#93000a",
+    "on-error": "#690005",
+    "on-error-container": "#ffdad6"
+  },
+  "chipInSwiftMapping": {
+    "note": "Approximate map to ChipInTheme.swift",
+    "background": "#0E0E10 ≈ surface-container-lowest",
+    "card": "#252528 ≈ surface-container-low",
+    "accent": "#FF8C42 ≈ primary-container",
+    "success": "#34D399 ≈ secondary (Stitch uses brighter #4EDEA3 mint)"
+  }
+}

@@ -11,6 +11,24 @@ struct ActivityItem: Identifiable {
     let date: Date
     let actorName: String
     let actorId: UUID
+    /// Settlement counterparty display name (`to_user` when actor is `from_user`).
+    let peerName: String?
+
+    init(
+        id: UUID,
+        kind: Kind,
+        date: Date,
+        actorName: String,
+        actorId: UUID,
+        peerName: String? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.date = date
+        self.actorName = actorName
+        self.actorId = actorId
+        self.peerName = peerName
+    }
 }
 
 @Observable @MainActor
@@ -23,41 +41,26 @@ class ActivityFeedViewModel {
         isLoading = true
         defer { isLoading = false }
 
-        // Expenses you're split on (paid by others)
-        let yourSplits: [ExpenseSplit] = (try? await supabase
-            .from("expense_splits")
+        // Order by real time — never use `expense_id` (UUID) as a proxy for recency.
+        async let expensesTask: [Expense] = (try? await supabase
+            .from("expenses")
             .select()
-            .eq("user_id", value: currentUserId)
-            .order("expense_id", ascending: false)
-            .limit(30)
+            .order("created_at", ascending: false)
+            .limit(35)
             .execute()
             .value) ?? []
 
-        let splitExpenseIds = Array(Set(yourSplits.map(\.expenseId.uuidString)))
-        var expenses: [Expense] = []
-        if !splitExpenseIds.isEmpty {
-            expenses = (try? await supabase
-                .from("expenses")
-                .select()
-                .in("id", values: splitExpenseIds)
-                .neq("paid_by", value: currentUserId)
-                .order("created_at", ascending: false)
-                .limit(20)
-                .execute()
-                .value) ?? []
-        }
-
-        // Recent settlements involving current user
-        let settlements: [Settlement] = (try? await supabase
+        async let settlementsTask: [Settlement] = (try? await supabase
             .from("settlements")
             .select()
             .or("from_user_id.eq.\(currentUserId),to_user_id.eq.\(currentUserId)")
             .order("settled_at", ascending: false)
-            .limit(10)
+            .limit(15)
             .execute()
             .value) ?? []
 
-        // Fetch display names for actors
+        let (expenses, settlements) = await (expensesTask, settlementsTask)
+
         var userCache: [UUID: String] = [:]
         let actorIds = Array(Set(
             expenses.map(\.paidBy) +
@@ -85,13 +88,14 @@ class ActivityFeedViewModel {
                 actorId: exp.paidBy
             ))
         }
-        for s in settlements where s.fromUserId != currentUserId {
+        for s in settlements {
             feed.append(ActivityItem(
                 id: s.id,
                 kind: .settled(s),
                 date: s.settledAt,
                 actorName: userCache[s.fromUserId] ?? "Someone",
-                actorId: s.fromUserId
+                actorId: s.fromUserId,
+                peerName: userCache[s.toUserId] ?? "Someone"
             ))
         }
 
